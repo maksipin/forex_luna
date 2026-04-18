@@ -69,7 +69,7 @@ export async function fetchComplexSymbolData(symbol: string): Promise<CombinedSy
 
 export async function fetchForexPairs() {
   try {
-    const response = await sdk.forexPairs();
+    const response = await sdk.forexPairs({});
     
     if (response.status === 'error') {
       throw new Error(response.message);

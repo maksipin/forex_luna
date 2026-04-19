@@ -37,12 +37,15 @@ export async function fetchComplexSymbolData(symbol: string): Promise<CombinedSy
         symbol: uppercaseSymbol,
         interval: '1day',
         outputsize: 1,
+        timezone: 'Europe/Moscow'
+
       }),
       // 2. Две последние часовые свечи (outputsize=2)
       sdk.timeSeries({
         symbol: uppercaseSymbol,
         interval: '1h',
         outputsize: 2,
+        timezone: 'Europe/Moscow'
       }),
     ]);
 
@@ -50,6 +53,8 @@ export async function fetchComplexSymbolData(symbol: string): Promise<CombinedSy
     if (dailyRes.status === 'error' || hourlyRes.status === 'error') {
       throw new Error(dailyRes.message || hourlyRes.message || 'Ошибка API');
     }
+
+    console.log(`Данные для ${uppercaseSymbol}:`, { daily: dailyRes, hourly: hourlyRes }, dailyRes.values, hourlyRes.values);
 
     const result = {
         symbol: uppercaseSymbol,

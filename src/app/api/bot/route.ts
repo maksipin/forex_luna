@@ -23,7 +23,7 @@ bot.command("analyze", async (ctx) => {
     await ctx.reply(`🔍 Анализирую ${symbol}...`);
     
     // fetchComplexSymbolData уже содержит логику отправки сообщения с результатом
-    await fetchComplexSymbolData(symbol);
+    await fetchComplexSymbolData(symbol, true);
     
     // Пауза между запросами
     await new Promise(resolve => setTimeout(resolve, config.apiInterval * 1000));

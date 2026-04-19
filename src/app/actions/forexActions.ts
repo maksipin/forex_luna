@@ -24,7 +24,7 @@ export type CombinedSymbolData = {
   error?: string;
 };
 
-export async function fetchComplexSymbolData(symbol: string): Promise<CombinedSymbolData> {
+export async function fetchComplexSymbolData(symbol: string, bot?: boolean): Promise<CombinedSymbolData> {
   if (!symbol) return { symbol, daily: null, hourly: null, error: 'Символ не указан' };
 
   try {
@@ -64,7 +64,7 @@ export async function fetchComplexSymbolData(symbol: string): Promise<CombinedSy
 
     // ВЫЗОВ БОТА: Отправляем уведомление в фоне
     // Не используем await, чтобы не задерживать ответ фронтенду
-    if (result.daily && result.hourly) {
+    if (result.daily && result.hourly && bot) {
        sendSignalNotification(result).catch(console.error);
     }
 

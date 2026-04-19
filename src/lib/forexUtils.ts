@@ -21,12 +21,12 @@ export const MAJORS = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'AUD/USD', 'U
 
 export const CROSSES = [
   'EUR/GBP', 'EUR/JPY', 'EUR/CHF', 'EUR/AUD', 'EUR/CAD', 
-  'GBP/JPY', 'GBP/CHF', 'GBP/AUD', 'AUD/JPY', 'NZD/JPY'
+  'GBP/JPY', 'GBP/CHF', 'GBP/AUD', 'AUD/JPY', 'NZD/JPY', "AUD/CHF", "AUD/CAD", "NZD/CHF", "NZD/CAD"
 ];
 
 
 export const DEFAULT_CONFIG = {
-  apiInterval: 30, // в секундах
+  apiInterval: 8, // в секундах
   cacheTTL: 20    // в минутах
 };
 

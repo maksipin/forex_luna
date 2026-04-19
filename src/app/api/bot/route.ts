@@ -17,9 +17,11 @@ bot.command("analyze", async (ctx) => {
   await ctx.reply("🚀 Запускаю полный анализ мажоров... Это займет несколько минут из-за лимитов API.");
 
   const config = getAppConfig();
+
+  const pairs = MAJORS.slice(0,3); // Можно добавить другие пары по желанию
   
   // Запускаем цикл анализа
-  for (const symbol of MAJORS) {
+  for (const symbol of pairs) {
     await ctx.reply(`🔍 Анализирую ${symbol}...`);
     
     // fetchComplexSymbolData уже содержит логику отправки сообщения с результатом

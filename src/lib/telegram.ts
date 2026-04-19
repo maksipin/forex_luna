@@ -32,12 +32,10 @@ export async function sendSignalNotification(data: CombinedSymbolData) {
     timeZone: 'Europe/Moscow'
   }).format(new Date());
 
-  const getHourOnly = (dateStr: string) => {
-    return new Intl.DateTimeFormat('ru-RU', {
-      hour: '2-digit',
-      timeZone: 'Europe/Moscow'
-    }).format(new Date(dateStr)).replace(/^0/, ''); // Убираем ведущий ноль если нужно
-  };
+  const getHourOnly = (datetime: string): string =>{
+    const date = new Date(datetime);
+    return `${date.getHours()}H`;
+};
 
   // Подготовка данных для сообщения
   const signalText = signal === 'BUY' ? "🟢 ПОКУПКА" : "🔴 ПРОДАЖА";

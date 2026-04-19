@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useTransition } from 'react';
 import { fetchComplexSymbolData, fetchForexPairs } from './actions/forexActions';
-import { MAJORS, CROSSES, calculateSignal, delay, formatCandleHour, getCachedData, setCachedData, getAppConfig } from '@/lib/forexUtils';
+import { MAJORS, CROSSES, calculateSignal, delay, formatCandleHour, getCachedData, setCachedData, getAppConfig, ALL_SYMBOLS } from '@/lib/forexUtils';
 import VisualCandle from '@/components/VisualCandle';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { 
@@ -20,7 +20,7 @@ import SettingsModal from '@/components/SettingsModal';
 
 export default function ProfessionalForexDashboard() {
   // Состояния для UI
-  const [activeTab, setActiveTab] = useState<'majors' | 'crosses' | 'search'>('majors');
+  const [activeTab, setActiveTab] = useState<'fx' | 'majors' | 'crosses' | 'search'>('majors');
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoaded, setIsLoaded] = useState(false);
   
@@ -163,12 +163,13 @@ export default function ProfessionalForexDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
           {/* Левая панель: Инструменты */}
-          <aside className="lg:col-span-4 xl:col-span-3 space-y-6">
+          <aside className="lg:col-span-4 xl:col-span-4 space-y-6">
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
               <h2 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase mb-6 tracking-[0.2em]">Выбор пар</h2>
               
               {/* Вкладки */}
               <div className="flex bg-slate-100 dark:bg-slate-950 p-1 rounded-xl mb-6">
+                <TabButton active={activeTab === 'fx'} onClick={() => setActiveTab('fx')} icon={<Zap size={14}/>} label="FX" />
                 <TabButton active={activeTab === 'majors'} onClick={() => setActiveTab('majors')} icon={<Zap size={14}/>} label="Majors" />
                 <TabButton active={activeTab === 'crosses'} onClick={() => setActiveTab('crosses')} icon={<Layers size={14}/>} label="Cross" />
                 <TabButton active={activeTab === 'search'} onClick={() => setActiveTab('search')} icon={<Search size={14}/>} label="All" />
@@ -187,7 +188,7 @@ export default function ProfessionalForexDashboard() {
                 )}
 
                 <div className="flex flex-wrap gap-2">
-                  {(activeTab === 'majors' ? MAJORS : activeTab === 'crosses' ? CROSSES : 
+                  {(activeTab === 'fx' ? ALL_SYMBOLS : activeTab === 'majors' ? MAJORS : activeTab === 'crosses' ? CROSSES :
                     allPairs.filter(p => p.symbol.includes(searchQuery.toUpperCase())).slice(0, 12).map(p => p.symbol)
                   ).map(symbol => (
                     <button 
@@ -217,7 +218,7 @@ export default function ProfessionalForexDashboard() {
           </aside>
 
          {/* Правая панель: Результаты */}
-<section className="lg:col-span-8 xl:col-span-9">
+<section className="lg:col-span-8 xl:col-span-8">
   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
     <h2 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
       Результаты анализа ({filteredResults.length})

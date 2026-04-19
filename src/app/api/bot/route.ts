@@ -26,7 +26,7 @@ bot.command("analyze", async (ctx) => {
     await fetchComplexSymbolData(symbol, true);
     
     // Пауза между запросами
-    await new Promise(resolve => setTimeout(resolve, config.apiInterval * 1000));
+    // await new Promise(resolve => setTimeout(resolve, config.apiInterval * 1000));
   }
 
   await ctx.reply("✅ Анализ всех пар завершен.");

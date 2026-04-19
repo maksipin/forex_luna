@@ -36,6 +36,8 @@ export default function ProfessionalForexDashboard() {
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
+  const [filter, setFilter] = useState<'ALL' | 'SIGNALS' | 'NEUTRAL'>('ALL');
+
   // 1. Инициализация (Загрузка из памяти и API)
   useEffect(() => {
     async function init() {
@@ -119,6 +121,13 @@ export default function ProfessionalForexDashboard() {
       prev.includes(symbol) ? prev.filter(s => s !== symbol) : [...prev, symbol]
     );
   };
+
+  const filteredResults = results.filter(data => {
+  const signal = calculateSignal(data);
+  if (filter === 'SIGNALS') return signal === 'BUY' || signal === 'SELL';
+  if (filter === 'NEUTRAL') return signal === 'NEUTRAL';
+  return true; // ALL
+});
 
   if (!isLoaded) {
     return (
@@ -207,26 +216,56 @@ export default function ProfessionalForexDashboard() {
             </div>
           </aside>
 
-          {/* Правая панель: Результаты */}
-          <section className="lg:col-span-8 xl:col-span-9">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Сначала рендерим готовые результаты */}
-              {results
-                .filter(r => selectedPairs.includes(r.symbol)) // показываем только выбранные
-                .map((data, idx) => (
-                  <ResultCard key={data.symbol} data={data} loadingSymbols={loadingSymbols} />
-                ))
-              }
+         {/* Правая панель: Результаты */}
+<section className="lg:col-span-8 xl:col-span-9">
+  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+    <h2 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
+      Результаты анализа ({filteredResults.length})
+    </h2>
 
-              {/* Затем рендерим скелетоны для тех, кто еще в очереди */}
-              {loadingSymbols
-                .filter(s => !results.find(r => r.symbol === s))
-                .map(symbol => (
-                  <SkeletonCard key={symbol} symbol={symbol} />
-                ))
-              }
-            </div>
-         </section>
+    {/* Переключатель фильтров */}
+    <div className="flex bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1 rounded-xl shadow-sm">
+      <FilterButton 
+        active={filter === 'ALL'} 
+        onClick={() => setFilter('ALL')} 
+        label="Все" 
+      />
+      <FilterButton 
+        active={filter === 'SIGNALS'} 
+        onClick={() => setFilter('SIGNALS')} 
+        label="Сигналы" 
+        count={results.filter(r => calculateSignal(r) !== 'NEUTRAL').length}
+        color="text-emerald-500"
+      />
+      <FilterButton 
+        active={filter === 'NEUTRAL'} 
+        onClick={() => setFilter('NEUTRAL')} 
+        label="Neutral" 
+      />
+    </div>
+  </div>
+
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    {filteredResults.map((data) => (
+      <ResultCard key={data.symbol} data={data} loadingSymbols={loadingSymbols} />
+    ))}
+    
+    {/* Состояние "Ничего не найдено" */}
+    {filteredResults.length === 0 && results.length > 0 && (
+      <div className="col-span-full py-20 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[3rem] text-center">
+        <p className="text-slate-400 font-medium italic">Нет результатов, подходящих под выбранный фильтр</p>
+      </div>
+    )}
+
+    {/* Скелетоны (те, что еще грузятся, всегда внизу) */}
+    {loadingSymbols
+      .filter(s => !results.find(r => r.symbol === s))
+      .map(symbol => (
+        <SkeletonCard key={symbol} symbol={symbol} />
+      ))
+    }
+  </div>
+</section>
          <SettingsModal 
             isOpen={isSettingsOpen} 
             onClose={() => setIsSettingsOpen(false)} 
@@ -325,5 +364,25 @@ function CandleWithLabel({ label, data }: { label: string, data: any }) {
         <div className="h-20 flex items-center text-[10px] text-slate-300 italic">No data</div>
       )}
     </div>
+  );
+}
+
+function FilterButton({ active, onClick, label, count, color }: any) {
+  return (
+    <button 
+      onClick={onClick}
+      className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-tighter transition-all flex items-center gap-2 ${
+        active 
+          ? 'bg-slate-100 dark:bg-slate-800 text-blue-600 dark:text-white shadow-inner' 
+          : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+      }`}
+    >
+      {label}
+      {count !== undefined && count > 0 && (
+        <span className={`ml-1 px-1.5 py-0.5 rounded-md bg-white dark:bg-slate-700 shadow-sm ${color || ''}`}>
+          {count}
+        </span>
+      )}
+    </button>
   );
 }

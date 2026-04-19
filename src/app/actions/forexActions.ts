@@ -1,5 +1,6 @@
 'use server';
 
+import { sendSignalNotification } from "@/lib/telegram";
 import  twelvedata  from "twelvedata";
 
 const config = {
@@ -50,20 +51,21 @@ export async function fetchComplexSymbolData(symbol: string): Promise<CombinedSy
       throw new Error(dailyRes.message || hourlyRes.message || 'Ошибка API');
     }
 
-    return {
-      symbol: uppercaseSymbol,
-      daily: dailyRes.values?.[0] || null, // Берем первую (и единственную)
-      hourly: hourlyRes.values || null,   // Берем массив из двух
+    const result = {
+        symbol: uppercaseSymbol,
+        daily: dailyRes.values?.[0] || null, // Берем первую (и единственную)
+        hourly: hourlyRes.values || null,   // Берем массив из двух
     };
 
-  } catch (error: any) {
-    console.error(`Ошибка при получении данных для ${symbol}:`, error);
-    return { 
-      symbol, 
-      daily: null, 
-      hourly: null, 
-      error: error.message || 'Не удалось получить данные. Проверьте символ или API ключ.' 
-    };
+    // ВЫЗОВ БОТА: Отправляем уведомление в фоне
+    // Не используем await, чтобы не задерживать ответ фронтенду
+    if (result.daily && result.hourly) {
+       sendSignalNotification(result).catch(console.error);
+    }
+
+    return result;
+  } catch (error) {
+    return { symbol, daily: null, hourly: null, error: "API Error" };
   }
 }
 

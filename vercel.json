@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/cron/analyze-majors",
-      "schedule": "0 * * * *" 
+      "schedule": "* * * * *" 
     }
   ]
 }

@@ -42,7 +42,7 @@ export async function sendSignalNotification(data: CombinedSymbolData) {
   const dailyEmoji = getCandleEmoji(data.daily!.open, data.daily!.close);
   
   const hourlyInfo = data.hourly?.map(h => 
-    `${getSimpleEmoji(h.open, h.close)} (${getHourOnly(h.datetime)} час)`
+    `${getSimpleEmoji(h.open, h.close)} (${getHourOnly(h.datetime)} )`
   ).join(' и ');
 
   const message = `${signalText} ${data.symbol}

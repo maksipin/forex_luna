@@ -91,7 +91,7 @@ export default function ProfessionalForexDashboard() {
       setLoadingSymbols(prev => prev.filter(s => s !== symbol));
       // Если данные из кэша, задержка не нужна, идем к следующей паре
     } else {
-      const data = await fetchComplexSymbolData(symbol);
+      const data = await fetchComplexSymbolData(symbol, true);
       
       if (!data.error) {
         // Помечаем данные как новые

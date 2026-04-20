@@ -44,7 +44,7 @@ export async function fetchComplexSymbolData(symbol: string, bot?: boolean): Pro
       sdk.timeSeries({
         symbol: uppercaseSymbol,
         interval: '1h',
-        outputsize: 2,
+        outputsize: 3,
         timezone: 'Europe/Moscow'
       }),
     ]);
@@ -53,6 +53,8 @@ export async function fetchComplexSymbolData(symbol: string, bot?: boolean): Pro
     if (dailyRes.status === 'error' || hourlyRes.status === 'error') {
       throw new Error(dailyRes.message || hourlyRes.message || 'Ошибка API');
     }
+
+    hourlyRes.values = hourlyRes.values?.slice(1, 3).reverse() || null; // Оставляем только 2 последние свечи
 
     console.log(`Данные для ${uppercaseSymbol}:`, { daily: dailyRes, hourly: hourlyRes }, dailyRes.values, hourlyRes.values);
 

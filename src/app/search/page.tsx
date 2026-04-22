@@ -40,12 +40,7 @@ export default function ProfessionalForexDashboard() {
 
   const [filter, setFilter] = useState<'ALL' | 'SIGNALS' | 'NEUTRAL'>('ALL');
 
-  const handleStartAnalysis = async () => {
-    setIsProcessing(true);
-    const signals = await analyzeMajorForexSignals('USD/CHF');
-    console.log('Полученные сигналы:', signals);
-    setIsProcessing(false);
-  }
+
 
   // 1. Инициализация (Загрузка из памяти и API)
   useEffect(() => {
@@ -225,13 +220,6 @@ export default function ProfessionalForexDashboard() {
                 {isPending ? <Loader2 className="animate-spin w-5 h-5" /> : <><RefreshCw size={18}/> ОБНОВИТЬ ЦЕНЫ</>}
               </button>
 
-              <button 
-                onClick={handleStartAnalysis}
-                disabled={isPending || selectedPairs.length === 0}
-                className="w-full mt-8 bg-slate-900 dark:bg-blue-600 hover:bg-black dark:hover:bg-blue-500 text-white py-4 rounded-2xl font-black text-sm tracking-widest transition-all disabled:opacity-50 flex items-center justify-center gap-3 shadow-xl shadow-blue-900/10"
-              >
-                {isPending ? <Loader2 className="animate-spin w-5 h-5" /> : <><RefreshCw size={18}/> Анализ пары</>}
-              </button>
             </div>
           </aside>
 

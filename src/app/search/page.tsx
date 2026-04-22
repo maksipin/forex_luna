@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useTransition } from 'react';
-import { analyzeMajorForexSignals, fetchComplexSymbolData, fetchForexPairs } from './actions/forexActions';
+import { analyzeMajorForexSignals, fetchComplexSymbolData, fetchForexPairs } from '@/app/actions/forexActions';
 import { MAJORS, CROSSES, calculateSignal, delay, getCachedData, setCachedData, getAppConfig, ALL_SYMBOLS } from '@/lib/forexUtils';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { 
@@ -19,7 +19,6 @@ import SettingsModal from '@/components/SettingsModal';
 import FilterButton from '@/components/FilterButton';
 import ResultCard from '@/components/ResultCard';
 import TabButton from '@/components/TabButton';
-import EconomicCalendar from '@/components/EconomicCalendar';
 
 export default function ProfessionalForexDashboard() {
   // Состояния для UI
@@ -41,6 +40,12 @@ export default function ProfessionalForexDashboard() {
 
   const [filter, setFilter] = useState<'ALL' | 'SIGNALS' | 'NEUTRAL'>('ALL');
 
+  const handleStartAnalysis = async () => {
+    setIsProcessing(true);
+    const signals = await analyzeMajorForexSignals('USD/CHF');
+    console.log('Полученные сигналы:', signals);
+    setIsProcessing(false);
+  }
 
   // 1. Инициализация (Загрузка из памяти и API)
   useEffect(() => {
@@ -162,7 +167,6 @@ export default function ProfessionalForexDashboard() {
           >
             <SettingsIcon size={20} className="text-slate-600 dark:text-slate-400" />
           </button>
-          <ThemeToggle />
         </div>
         </header>
 
@@ -220,71 +224,73 @@ export default function ProfessionalForexDashboard() {
               >
                 {isPending ? <Loader2 className="animate-spin w-5 h-5" /> : <><RefreshCw size={18}/> ОБНОВИТЬ ЦЕНЫ</>}
               </button>
+
+              <button 
+                onClick={handleStartAnalysis}
+                disabled={isPending || selectedPairs.length === 0}
+                className="w-full mt-8 bg-slate-900 dark:bg-blue-600 hover:bg-black dark:hover:bg-blue-500 text-white py-4 rounded-2xl font-black text-sm tracking-widest transition-all disabled:opacity-50 flex items-center justify-center gap-3 shadow-xl shadow-blue-900/10"
+              >
+                {isPending ? <Loader2 className="animate-spin w-5 h-5" /> : <><RefreshCw size={18}/> Анализ пары</>}
+              </button>
             </div>
           </aside>
 
          {/* Правая панель: Результаты */}
-          <section className="lg:col-span-8 xl:col-span-8">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-              <h2 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
-                Результаты анализа ({filteredResults.length})
-              </h2>
+<section className="lg:col-span-8 xl:col-span-8">
+  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+    <h2 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
+      Результаты анализа ({filteredResults.length})
+    </h2>
 
-              {/* Переключатель фильтров */}
-              <div className="flex bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1 rounded-xl shadow-sm">
-                <FilterButton 
-                  active={filter === 'ALL'} 
-                  onClick={() => setFilter('ALL')} 
-                  label="Все" 
-                />
-                <FilterButton 
-                  active={filter === 'SIGNALS'} 
-                  onClick={() => setFilter('SIGNALS')} 
-                  label="Сигналы" 
-                  count={results.filter(r => calculateSignal(r) !== 'NEUTRAL').length}
-                  color="text-emerald-500"
-                />
-                <FilterButton 
-                  active={filter === 'NEUTRAL'} 
-                  onClick={() => setFilter('NEUTRAL')} 
-                  label="Neutral" 
-                />
-              </div>
-            </div>
+    {/* Переключатель фильтров */}
+    <div className="flex bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1 rounded-xl shadow-sm">
+      <FilterButton 
+        active={filter === 'ALL'} 
+        onClick={() => setFilter('ALL')} 
+        label="Все" 
+      />
+      <FilterButton 
+        active={filter === 'SIGNALS'} 
+        onClick={() => setFilter('SIGNALS')} 
+        label="Сигналы" 
+        count={results.filter(r => calculateSignal(r) !== 'NEUTRAL').length}
+        color="text-emerald-500"
+      />
+      <FilterButton 
+        active={filter === 'NEUTRAL'} 
+        onClick={() => setFilter('NEUTRAL')} 
+        label="Neutral" 
+      />
+    </div>
+  </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {filteredResults.map((data) => (
-                <ResultCard key={data.symbol} data={data} loadingSymbols={loadingSymbols} />
-              ))}
-              
-              {/* Состояние "Ничего не найдено" */}
-              {filteredResults.length === 0 && results.length > 0 && (
-                <div className="col-span-full py-20 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[3rem] text-center">
-                  <p className="text-slate-400 font-medium italic">Нет результатов, подходящих под выбранный фильтр</p>
-                </div>
-              )}
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    {filteredResults.map((data) => (
+      <ResultCard key={data.symbol} data={data} loadingSymbols={loadingSymbols} />
+    ))}
+    
+    {/* Состояние "Ничего не найдено" */}
+    {filteredResults.length === 0 && results.length > 0 && (
+      <div className="col-span-full py-20 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[3rem] text-center">
+        <p className="text-slate-400 font-medium italic">Нет результатов, подходящих под выбранный фильтр</p>
+      </div>
+    )}
 
-              {/* Скелетоны (те, что еще грузятся, всегда внизу) */}
-              {loadingSymbols
-                .filter(s => !results.find(r => r.symbol === s))
-                .map(symbol => (
-                  <SkeletonCard key={symbol} symbol={symbol} />
-                ))
-              }
-            </div>
-              
-          </section>
-        
-          <SettingsModal 
+    {/* Скелетоны (те, что еще грузятся, всегда внизу) */}
+    {loadingSymbols
+      .filter(s => !results.find(r => r.symbol === s))
+      .map(symbol => (
+        <SkeletonCard key={symbol} symbol={symbol} />
+      ))
+    }
+  </div>
+</section>
+         <SettingsModal 
             isOpen={isSettingsOpen} 
             onClose={() => setIsSettingsOpen(false)} 
           />
         </div>
-          
-            <EconomicCalendar />
-         
       </div>
-
-</main>
+    </main>
   );
 }

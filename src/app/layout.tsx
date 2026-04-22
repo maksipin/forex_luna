@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
+import DashboardLayout from "@/components/DashboardLayout";
 
 // const geistSans = Geist({
 //   variable: "--font-geist-sans",
@@ -27,7 +28,9 @@ export default function RootLayout({
    <html lang="ru" suppressHydrationWarning>
       <body>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-          {children}
+          <DashboardLayout>
+            {children}
+          </DashboardLayout>
         </ThemeProvider>
       </body>
     </html>

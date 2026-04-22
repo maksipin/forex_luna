@@ -177,14 +177,14 @@ interface TradeSignal {
   candlesPassed: number | null;
 }
 
-export async function analyzeMajorForexSignals(symbol: string): Promise<unknown> {
+export async function analyzeMajorForexSignals(symbol: string, startDay: any, endDay: any, takeProfit: number): Promise<unknown> {
   const uppercaseSymbol = symbol.toUpperCase(); // Убираем слэш для Twelve Data
   
   // 1. Настройка временного диапазона (вчерашний торговый день)
-  const startDay = DateTime.now().setZone('Europe/Moscow').minus({ days: 9 });
-  const endDay = DateTime.now().setZone('Europe/Moscow').minus({ days: 5 });
-  const start_date = startDay.startOf('day').toFormat('yyyy-MM-dd HH:mm:ss');
-  const end_date = endDay.endOf('day').toFormat('yyyy-MM-dd HH:mm:ss');
+  // const startDay = DateTime..now().setZone('Europe/Moscow').minus({ days: 9 });
+  // const endDay = DateTime.now().setZone('Europe/Moscow').minus({ days: 5 });
+  const start_date = startDay
+  const end_date = endDay
 
   try {
     const response = await sdk.timeSeries({
@@ -209,7 +209,7 @@ export async function analyzeMajorForexSignals(symbol: string): Promise<unknown>
     // Для JPY пар пункт — это 0.001, для остальных — 0.00001
     const isJpyPair = uppercaseSymbol.includes('JPY');
     const POINT = isJpyPair ? 0.001 : 0.00001;
-    const TARGET_DIFF = 180 * POINT;
+    const TARGET_DIFF = takeProfit * POINT;
 
     const dayOpen = parseFloat(candles[0].open);
 
@@ -221,6 +221,15 @@ export async function analyzeMajorForexSignals(symbol: string): Promise<unknown>
       const c3 = candles[i + 1] || null; // На случай, если это последняя свеча дня
 
       console.log(`Анализ свечей для ${uppercaseSymbol} - C1: ${c1.datetime}, C2: ${c2.datetime}`);
+
+          // 1. Парсим дату из строки (формат SQL: 2026-04-02 21:00:00)
+      const dt = DateTime.fromFormat(c2.datetime, 'yyyy-MM-dd HH:mm:ss');
+
+      // 2. Проверяем день недели (6 - суббота, 7 - воскресенье)
+      const isWeekend = dt.weekday === 6 || dt.weekday === 7;
+
+      // 3. Пропускаем итерацию, если это выходной
+      if (isWeekend) continue;
 
       // --- НОВОЕ УСЛОВИЕ: ПРОВЕРКА ВРЕМЕНИ ---
       // Извлекаем час из строки datetime (формат "YYYY-MM-DD HH:mm:ss")
@@ -255,7 +264,7 @@ export async function analyzeMajorForexSignals(symbol: string): Promise<unknown>
 
       if (signalType) {
         let resultTime: string | null = null;
-        let candlesCount: number | null = null;
+        let candlesCount: number  = 0;
 
         // 3. Слежка за достижением цели в последующих свечах до конца дня
         for (let j = i + 1; j < candles.length; j++) {
@@ -263,14 +272,22 @@ export async function analyzeMajorForexSignals(symbol: string): Promise<unknown>
           const high = parseFloat(futureCandle.high);
           const low = parseFloat(futureCandle.low);
 
+          const dt = DateTime.fromFormat(candles[j].datetime, 'yyyy-MM-dd HH:mm:ss');
+
+          // 2. Проверяем день недели (6 - суббота, 7 - воскресенье)
+          const isWeekend = dt.weekday === 6 || dt.weekday === 7;
+
+          // 3. Пропускаем итерацию, если это выходной
+          if (isWeekend) continue;
+          candlesCount++
           if (signalType === 'BUY' && high >= targetPrice) {
             resultTime = futureCandle.datetime;
-            candlesCount = j - i;
+            // candlesCount = j - i;
             break;
           }
           if (signalType === 'SELL' && low <= targetPrice) {
             resultTime = futureCandle.datetime;
-            candlesCount = j - i;
+            // candlesCount = j - i;
             break;
           }
         }
@@ -289,7 +306,7 @@ export async function analyzeMajorForexSignals(symbol: string): Promise<unknown>
       }
     }
 
-    return {signals, response};
+    return signals;
   } catch (error) {
     console.error(`Ошибка анализа для ${symbol}:`, error);
     return [];

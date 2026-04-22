@@ -21,7 +21,7 @@ bot.command("analyze", async (ctx) => {
   const pairs = MAJORS.slice(0,3); // Можно добавить другие пары по желанию
   
   // Запускаем цикл анализа
-  for (const symbol of pairs) {
+  for (const symbol of MAJORS) {
     await ctx.reply(`🔍 Анализирую ${symbol}...`);
     
     // fetchComplexSymbolData уже содержит логику отправки сообщения с результатом

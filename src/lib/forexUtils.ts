@@ -26,8 +26,9 @@ export const CROSSES = [
 
 export const ALL_SYMBOLS = ['AUD/NZD', 'AUD/CHF', 'AUD/CAD', 'AUD/USD', 'AUD/JPY', 
     'EUR/AUD', 'EUR/CHF', 'EUR/CAD', 'EUR/GBP', 'EUR/USD', 'EUR/JPY', 'EUR/NZD',
-    'USD/CHF', 'USD/CAD', 'USD/JPY', 'USD/NZD', 'USD/CNY',
-    'CHF/JPY', 'GBP/CHF', 'NZD/CAD', 'NZD/CHF', 'NZD/JPY', 'NZD/USD'];
+    'USD/CHF', 'USD/CAD', 'USD/JPY', 'USD/CNY',
+    'CHF/JPY', 'GBP/CHF',
+    'NZD/CAD', 'NZD/CHF', 'NZD/JPY', 'NZD/USD'];
 
 
 export const DEFAULT_CONFIG = {

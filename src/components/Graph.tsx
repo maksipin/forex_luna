@@ -9,22 +9,15 @@ export default function Graph({symbol = 'EURUSD', onClose}: {symbol?: string, on
   const { theme } = useTheme();
   const scriptId = `mc-script-graph-${symbol}`;
   const [isLoaded, setIsLoaded] = useState(false);
-  
+
   useEffect(() => {
     if (!containerRef.current) return;
 
-    // Очищаем контейнер
-    containerRef.current.innerHTML = '';
-    
-    // Удаляем старый скрипт если есть
-    const oldScript = document.getElementById(scriptId);
-    if (oldScript) oldScript.remove();
-
     // Проверяем, не загружен ли уже скрипт для графика
-    const existingScript = document.querySelector(`script[src="https://api.marketcheese.com/widgets/chart/widget.js"]`) as HTMLScriptElement;
-    
-    if (existingScript && existingScript.dataset.loaded === 'true') {
-      // Скрипт уже загружен, просто инициализируем виджет
+    const existingScript = document.querySelector(`script[src="https://api.marketcheese.com/widgets/chart/widget.js"]`) as HTMLScriptElement & { dataset?: { loaded?: string } };
+
+    if (existingScript && existingScript.dataset?.loaded === 'true') {
+      // Скрипт уже загружен, просто помечаем как загруженный
       setIsLoaded(true);
       return;
     }
@@ -33,7 +26,7 @@ export default function Graph({symbol = 'EURUSD', onClose}: {symbol?: string, on
     script.src = 'https://api.marketcheese.com/widgets/chart/widget.js';
     script.async = true;
     script.id = scriptId;
-    
+
     const config = {
       terminalBtn:{
         color:"#D3D9E3",
@@ -65,18 +58,20 @@ export default function Graph({symbol = 'EURUSD', onClose}: {symbol?: string, on
     containerRef.current.appendChild(script);
 
     return () => {
-      if (containerRef.current) {
-        containerRef.current.innerHTML = '';
-      }
-      
+      // Аккуратно удаляем только скрипт, не трогаем содержимое контейнера
+      // Виджет сам управляет своим содержимым
       const scriptToRemove = document.getElementById(scriptId);
-      if (scriptToRemove) scriptToRemove.remove();
-
-      // Очищаем глобальные переменные виджета
-      if (typeof window !== 'undefined') {
-        // @ts-ignore
-        delete window.MarketCheese;
+      if (scriptToRemove && scriptToRemove.parentNode) {
+        try {
+          scriptToRemove.parentNode.removeChild(scriptToRemove);
+        } catch (e) {
+          // Игнорируем ошибку, если элемент уже удален
+          console.debug('Script already removed');
+        }
       }
+
+      // Не очищаем innerHTML и не удаляем MarketCheese глобально,
+      // чтобы не ломать другие экземпляры виджета
       setIsLoaded(false);
     };
   }, [symbol, theme]);
@@ -92,17 +87,17 @@ export default function Graph({symbol = 'EURUSD', onClose}: {symbol?: string, on
             <X size={20} />
           </button>
         </div>
-      
+
       {/* Основной контейнер виджета */}
-      <div 
+      <div
       datatype='chart'
-        ref={containerRef} 
+        ref={containerRef}
         className="marketcheese-widget-container p-4 w-full bg-white dark:bg-slate-900 min-h-[600px] overflow-hidden"
       >
         {!isLoaded && <div className="text-center text-slate-500">Загрузка графика...</div>}
       </div>
       </div>
-     
+
     </div>
   );
 }

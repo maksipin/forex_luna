@@ -6,22 +6,15 @@ export default function EconomicCalendar() {
   const containerRef = useRef<HTMLDivElement>(null);
   const scriptId = `mc-script-economic-calendar`;
   const [isLoaded, setIsLoaded] = useState(false);
-  
+
   useEffect(() => {
     if (!containerRef.current) return;
 
-    // Очищаем контейнер
-    containerRef.current.innerHTML = '';
-    
-    // Удаляем старый скрипт если есть
-    const oldScript = document.getElementById(scriptId);
-    if (oldScript) oldScript.remove();
-
     // Проверяем, не загружен ли уже скрипт
-    const existingScript = document.querySelector(`script[src="https://api.marketcheese.com/widgets/calendar/widget.js"]`) as HTMLScriptElement;
-    
-    if (existingScript && existingScript.dataset.loaded === 'true') {
-      // Скрипт уже загружен, просто инициализируем виджет
+    const existingScript = document.querySelector(`script[src="https://api.marketcheese.com/widgets/calendar/widget.js"]`) as HTMLScriptElement & { dataset?: { loaded?: string } };
+
+    if (existingScript && existingScript.dataset?.loaded === 'true') {
+      // Скрипт уже загружен, просто помечаем как загруженный
       setIsLoaded(true);
       return;
     }
@@ -30,7 +23,7 @@ export default function EconomicCalendar() {
     script.src = 'https://api.marketcheese.com/widgets/calendar/widget.js';
     script.async = true;
     script.id = scriptId;
-    
+
     const config = {
       filters: {
         countries: "1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,81,186,211",
@@ -56,18 +49,20 @@ export default function EconomicCalendar() {
     containerRef.current.appendChild(script);
 
     return () => {
-      if (containerRef.current) {
-        containerRef.current.innerHTML = '';
-      }
-      
+      // Аккуратно удаляем только скрипт, не трогаем содержимое контейнера
+      // Виджет сам управляет своим содержимым
       const scriptToRemove = document.getElementById(scriptId);
-      if (scriptToRemove) scriptToRemove.remove();
-
-      // Очищаем глобальные переменные виджета
-      if (typeof window !== 'undefined') {
-        // @ts-ignore
-        delete window.MarketCheese;
+      if (scriptToRemove && scriptToRemove.parentNode) {
+        try {
+          scriptToRemove.parentNode.removeChild(scriptToRemove);
+        } catch (e) {
+          // Игнорируем ошибку, если элемент уже удален
+          console.debug('Script already removed');
+        }
       }
+
+      // Не очищаем innerHTML и не удаляем MarketCheese глобально,
+      // чтобы не ломать другие экземпляры виджета
       setIsLoaded(false);
     };
   }, []);
@@ -78,10 +73,10 @@ export default function EconomicCalendar() {
         <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
         Экономический календарь
       </h2>
-      
+
       {/* Основной контейнер виджета */}
-      <div 
-        ref={containerRef} 
+      <div
+        ref={containerRef}
         className="marketcheese-widget-container p-4 w-full bg-white dark:bg-slate-900 min-h-[600px] overflow-hidden"
       >
         {!isLoaded && <div className="text-center text-slate-500">Загрузка календаря...</div>}

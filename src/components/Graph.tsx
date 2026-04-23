@@ -8,28 +8,32 @@ export default function Graph({symbol = 'EURUSD', onClose}: {symbol?: string, on
   const containerRef = useRef<HTMLDivElement>(null);
   const { theme } = useTheme();
   const scriptId = `mc-script-graph-${symbol}`;
-  const [isClient, setIsClient] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
   
-    useEffect(() => {
-      setIsClient(true);
-    }, []);
-
   useEffect(() => {
-    // 1. Очищаем контейнер перед вставкой (чтобы виджет не дублировался при HMR)
-    if (containerRef.current) {
-      containerRef.current.innerHTML = '';
-    }
+    if (!containerRef.current) return;
 
+    // Очищаем контейнер
+    containerRef.current.innerHTML = '';
+    
+    // Удаляем старый скрипт если есть
     const oldScript = document.getElementById(scriptId);
     if (oldScript) oldScript.remove();
 
-    // 2. Создаем элемент скрипта вручную
+    // Проверяем, не загружен ли уже скрипт для графика
+    const existingScript = document.querySelector(`script[src="https://api.marketcheese.com/widgets/chart/widget.js"]`) as HTMLScriptElement;
+    
+    if (existingScript && existingScript.dataset.loaded === 'true') {
+      // Скрипт уже загружен, просто инициализируем виджет
+      setIsLoaded(true);
+      return;
+    }
+
     const script = document.createElement('script');
     script.src = 'https://api.marketcheese.com/widgets/chart/widget.js';
     script.async = true;
     script.id = scriptId;
     
-    // 3. Передаем конфиг через атрибут
     const config = {
       terminalBtn:{
         color:"#D3D9E3",
@@ -48,29 +52,34 @@ export default function Graph({symbol = 'EURUSD', onClose}: {symbol?: string, on
     };
     script.setAttribute('data-config', JSON.stringify(config));
 
-        // 4. Добавляем скрипт именно внутрь нашего div
-   const timer = setTimeout(() => {
-      if (containerRef.current) {
-        containerRef.current.appendChild(script);
-      }
-    }, 100);
+    script.onload = () => {
+      script.dataset.loaded = 'true';
+      setIsLoaded(true);
+    };
+
+    script.onerror = () => {
+      console.error('Failed to load MarketCheese graph widget');
+      setIsLoaded(false);
+    };
+
+    containerRef.current.appendChild(script);
 
     return () => {
-      clearTimeout(timer);
-      if (containerRef.current) containerRef.current.innerHTML = '';
+      if (containerRef.current) {
+        containerRef.current.innerHTML = '';
+      }
       
-      // Удаляем скрипт из DOM
       const scriptToRemove = document.getElementById(scriptId);
       if (scriptToRemove) scriptToRemove.remove();
 
-      // Очищаем глобальные переменные виджета, если они есть
-      // Это предотвратит конфликты, когда новый виджет увидит "старые" настройки
+      // Очищаем глобальные переменные виджета
       if (typeof window !== 'undefined') {
         // @ts-ignore
-        delete window.MarketCheese; 
+        delete window.MarketCheese;
       }
+      setIsLoaded(false);
     };
-  }, [isClient]);
+  }, [symbol, theme]);
 
   return (
       <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
@@ -90,7 +99,7 @@ export default function Graph({symbol = 'EURUSD', onClose}: {symbol?: string, on
         ref={containerRef} 
         className="marketcheese-widget-container p-4 w-full bg-white dark:bg-slate-900 min-h-[600px] overflow-hidden"
       >
-        {/* Сюда скрипт вставит iframe календаря */}
+        {!isLoaded && <div className="text-center text-slate-500">Загрузка графика...</div>}
       </div>
       </div>
      

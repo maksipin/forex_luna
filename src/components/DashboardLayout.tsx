@@ -19,7 +19,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
 
   const menuItems = [
-    { name: 'Поиск сигналов', href: '/search', icon: Search },
+    { name: 'Поиск сигналов', href: '/', icon: Search },
     { name: 'Анализ статистики', href: '/stats', icon: BarChart2 },
     { name: 'Настройки', href: '/settings', icon: Settings },
   ];

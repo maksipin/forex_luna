@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useTransition } from 'react';
-import { analyzeMajorForexSignals, fetchComplexSymbolData, fetchForexPairs } from '@/app/actions/forexActions';
-import { MAJORS, CROSSES, calculateSignal, delay, getCachedData, setCachedData, getAppConfig, ALL_SYMBOLS } from '@/lib/forexUtils';
+import { useState, useEffect } from 'react';
+import { fetchMarketCheeseComplexData } from '@/app/actions/forexActions';
+import { calculateSignal, ALL_SYMBOLS } from '@/lib/forexUtils';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { 
   Loader2, 
@@ -19,6 +19,7 @@ import SettingsModal from '@/components/SettingsModal';
 import FilterButton from '@/components/FilterButton';
 import ResultCard from '@/components/ResultCard';
 import TabButton from '@/components/TabButton';
+import EconomicCalendar from '@/components/EconomicCalendar';
 
 export default function ProfessionalForexDashboard() {
   // Состояния для UI
@@ -33,8 +34,6 @@ export default function ProfessionalForexDashboard() {
 
   const [loadingSymbols, setLoadingSymbols] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
-  
-  const [isPending, startTransition] = useTransition();
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
@@ -44,19 +43,16 @@ export default function ProfessionalForexDashboard() {
 
   // 1. Инициализация (Загрузка из памяти и API)
   useEffect(() => {
-    async function init() {
-      // Загружаем список всех пар для поиска
-      const pairs = await fetchForexPairs();
-      setAllPairs(pairs);
+    function init() {
+      
+      setAllPairs(ALL_SYMBOLS);
 
       // Загружаем настройки пользователя
       const savedPairs = localStorage.getItem('selected_forex_pairs');
-      const savedResults = localStorage.getItem('last_analysis_results');
 
       if (savedPairs) setSelectedPairs(JSON.parse(savedPairs));
       else setSelectedPairs(['EUR/USD']);
 
-      if (savedResults) setResults(JSON.parse(savedResults));
       
       setIsLoaded(true);
     }
@@ -76,33 +72,36 @@ export default function ProfessionalForexDashboard() {
   if (isProcessing) return;
   setIsProcessing(true);
   
-  const config = getAppConfig();
+  // const config = getAppConfig();
   setLoadingSymbols(selectedPairs);
   const updatedResults = [...results];
 
   for (let i = 0; i < selectedPairs.length; i++) {
     const symbol = selectedPairs[i];
-    const cached = getCachedData(symbol);
+    // const cached = getCachedData(symbol);
+      const cached = null
     
     if (cached) {
       // Помечаем данные как кэшированные
-      const dataWithStatus = { ...cached, isCached: true };
+      // const dataWithStatus = { ...cached, isCached: true };
       
-      const idx = updatedResults.findIndex(r => r.symbol === symbol);
-      if (idx > -1) updatedResults[idx] = dataWithStatus;
-      else updatedResults.push(dataWithStatus);
+      // const idx = updatedResults.findIndex(r => r.symbol === symbol);
+      // if (idx > -1) updatedResults[idx] = dataWithStatus;
+      // else updatedResults.push(dataWithStatus);
       
-      setResults([...updatedResults]);
-      setLoadingSymbols(prev => prev.filter(s => s !== symbol));
-      // Если данные из кэша, задержка не нужна, идем к следующей паре
+      // setResults([...updatedResults]);
+      // setLoadingSymbols(prev => prev.filter(s => s !== symbol));
+      // // Если данные из кэша, задержка не нужна, идем к следующей паре
     } else {
-      const data = await fetchComplexSymbolData(symbol, true);
+      // const data = await fetchComplexSymbolData(symbol, true);
+       const data = await fetchMarketCheeseComplexData(symbol, false);
+       console.log(`Данные для ${symbol}:`, data);
       
       
       if (!data.error) {
         // Помечаем данные как новые
         const dataWithStatus = { ...data, isCached: false };
-        setCachedData(symbol, data);
+        // setCachedData(symbol, data);
         
         const idx = updatedResults.findIndex(r => r.symbol === symbol);
         if (idx > -1) updatedResults[idx] = dataWithStatus;
@@ -115,7 +114,7 @@ export default function ProfessionalForexDashboard() {
 
       // Задержка только после реального запроса к API
       if (i < selectedPairs.length - 1) {
-        await delay(config.apiInterval * 1000); 
+        // await delay(config.apiInterval * 1000); 
       }
     }
   }
@@ -193,9 +192,7 @@ export default function ProfessionalForexDashboard() {
                 )}
 
                 <div className="flex flex-wrap gap-2">
-                  {(activeTab === 'fx' ? ALL_SYMBOLS : activeTab === 'majors' ? MAJORS : activeTab === 'crosses' ? CROSSES :
-                    allPairs.filter(p => p.symbol.includes(searchQuery.toUpperCase())).slice(0, 12).map(p => p.symbol)
-                  ).map(symbol => (
+                  {allPairs.map(symbol => (
                     <button 
                       key={symbol}
                       onClick={() => togglePair(symbol)}
@@ -214,10 +211,10 @@ export default function ProfessionalForexDashboard() {
               {/* Кнопка запуска */}
               <button 
                 onClick={handleFetch}
-                disabled={isPending || selectedPairs.length === 0}
+                disabled={isProcessing || selectedPairs.length === 0}
                 className="w-full mt-8 bg-slate-900 dark:bg-blue-600 hover:bg-black dark:hover:bg-blue-500 text-white py-4 rounded-2xl font-black text-sm tracking-widest transition-all disabled:opacity-50 flex items-center justify-center gap-3 shadow-xl shadow-blue-900/10"
               >
-                {isPending ? <Loader2 className="animate-spin w-5 h-5" /> : <><RefreshCw size={18}/> ОБНОВИТЬ ЦЕНЫ</>}
+                {isProcessing ? <Loader2 className="animate-spin w-5 h-5" /> : <><RefreshCw size={18}/> ОБНОВИТЬ ЦЕНЫ</>}
               </button>
 
             </div>
@@ -278,6 +275,7 @@ export default function ProfessionalForexDashboard() {
             onClose={() => setIsSettingsOpen(false)} 
           />
         </div>
+         <EconomicCalendar />
       </div>
     </main>
   );

@@ -2,14 +2,42 @@
 
 import { sendSignalNotification } from "@/lib/telegram";
 import  twelvedata  from "twelvedata";
-import Taapi from 'taapi';
 import { DateTime } from 'luxon';
+import { SYMBOL_MAP } from "@/lib/forexUtils";
 
 const config = {
   key: process.env.TWELVE_DATA_API_KEY,
 };
 
 const sdk = twelvedata(config);
+
+interface MarketCheeseResponse {
+  status: "Success" | "Error";
+  data: {
+    items: {
+      date: number; // UNIX timestamp
+      open: number;
+      high: number;
+      low: number;
+      close: number;
+      volume?: number; // Не всегда приходит
+    }[];
+    metaData: {
+      pageCount: number;
+      totalCount: number;
+    }
+  };
+}
+
+interface MarketCheeseCandle {
+  dt: DateTime;
+  dateStr: string;
+  fullTimeStr: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+}
 
 export type Candle = {
   datetime: string;
@@ -26,281 +54,181 @@ export type CombinedSymbolData = {
   error?: string;
 };
 
-
-
-// Инициализация клиента (лучше вынести в отдельный конфиг-файл)
-const taapiClient = new Taapi(process.env.TAAPI_API_KEY || "");
-taapiClient.setProvider("polygon", process.env.POLYGON_API_KEY || "");
-console.log("TAAPI Client initialized with key:", process.env.TAAPI_API_KEY);
-
-export async function fetchTaapiPivots(symbol: string, interval: string = '1day') {
-  try {
-    // Важно: TAAPI ожидает формат символа через косую черту для Forex (например, EUR/USD)
-    const formattedSymbol = symbol.includes('/') ? symbol : symbol.replace(/([A-Z]{3})([A-Z]{3})/, '$1/$2');
- // Можно указать тип: 'classic', 'fibonacci', 'camarilla', 'woodie', 'demark'
-    const result = await taapiClient.getIndicator("pivotpoints", symbol, interval, { type: 'forex' });
-
-    return {
-      p: result.valueP,
-      r1: result.valueR1,
-      s1: result.valueS1,
-      r2: result.valueR2,
-      s2: result.valueS2
-    };
-  } catch (error: any) {
-    // Обработка ошибки лимита (Rate Limit 429)
-    if (error.status === 429) {
-      console.warn("TAAPI: Превышен лимит запросов (1 запрос в 15 секунд)");
-    }
-    console.error("TAAPI Error:", error.message);
-    return null;
-  }
-}
-
-export async function fetchComplexSymbolData(symbol: string, bot?: boolean): Promise<CombinedSymbolData> {
+export async function fetchMarketCheeseComplexData(symbol: string, bot?: boolean): Promise<CombinedSymbolData> {
   if (!symbol) return { symbol, daily: null, hourly: null, error: 'Символ не указан' };
 
   try {
-    const uppercaseSymbol = symbol.toUpperCase();
+    const symbolId = SYMBOL_MAP[symbol.toUpperCase()] || 68;
+    const nowTimestamp = DateTime.now().toFormat('yyyyMMddHHmm');
 
-    // Запрашиваем данные параллельно для скорости
-    const [dailyRes, hourlyRes] = await Promise.all([
-      // 1. Дневная свеча (outputsize=1)
-      sdk.timeSeries({
-        symbol: uppercaseSymbol,
-        interval: '1day',
-        outputsize: 1,
-        timezone: 'Europe/Moscow'
+    // Формируем URL для дневных и часовых данных
+    // Нам нужно 2 дневных (чтобы точно иметь одну закрытую) и 4 часовых
+    const dailyUrl = `https://api.marketcheese.com/widgets/charts/quotes?symbol=${symbolId}&timeframe=D1&direction=-1&count=2&date=${nowTimestamp}`;
+    const hourlyUrl = `https://api.marketcheese.com/widgets/charts/quotes?symbol=${symbolId}&timeframe=H1&direction=-1&count=4&date=${nowTimestamp}`;
 
-      }),
-      // 2. Две последние часовые свечи (outputsize=2)
-      sdk.timeSeries({
-        symbol: uppercaseSymbol,
-        interval: '1h',
-        outputsize: 3,
-        timezone: 'Europe/Moscow'
-      }),
-// 3. Используем technicalIndicators для получения Pivot Points
-
+    // Запрашиваем данные параллельно
+    const [dailyResJ, hourlyResJ] = await Promise.all([
+      fetch(dailyUrl).then(res => res.json()) as Promise<MarketCheeseResponse>,
+      fetch(hourlyUrl).then(res => res.json()) as Promise<MarketCheeseResponse> 
     ]);
 
-    // Простая проверка на корректность ответа (Twelve Data возвращает статус в теле)
-    if (dailyRes.status === 'error' || hourlyRes.status === 'error') {
-      throw new Error(dailyRes.message || hourlyRes.message || 'Ошибка API');
+    const dailyRes = dailyResJ.data.items;
+    const hourlyRes = hourlyResJ.data.items;
+
+
+
+    if (!Array.isArray(dailyRes) || !Array.isArray(hourlyRes)) {
+      throw new Error('Некорректный ответ от MarketCheese API');
     }
 
-
-    hourlyRes.values = hourlyRes.values?.slice(1, 3).reverse() || null; // Оставляем только 2 последние свечи
-
-    console.log(`Данные для ${uppercaseSymbol}:`, { daily: dailyRes, hourly: hourlyRes }, dailyRes.values, hourlyRes.values);
-
-    const result = {
-        symbol: uppercaseSymbol,
-        daily: dailyRes.values?.[0] || null, // Берем первую (и единственную)
-        hourly: hourlyRes.values || null,   // Берем массив из двух
-    };
-
-    // ВЫЗОВ БОТА: Отправляем уведомление в фоне
-    // Не используем await, чтобы не задерживать ответ фронтенду
-    if (result.daily && result.hourly && bot) {
-       sendSignalNotification(result).catch(console.error);
-    }
-
-    return result;
-  } catch (error) {
-    return { symbol, daily: null, hourly: null, error: "API Error" };
-  }
-}
-
-export async function fetchAllSymbolData(symbol: string[], bot?: boolean): Promise<unknown> {
-  if (!symbol) return { symbol, daily: null, hourly: null, error: 'Символ не указан' };
-
-  try {
-    const uppercaseSymbol = symbol.map(s => s.toUpperCase());
-
-    // Запрашиваем данные параллельно для скорости
-    const [dailyRes] = await Promise.all([
-      // 1. Дневная свеча (outputsize=1)
-      sdk.timeSeries({
-        symbol: uppercaseSymbol,
-        interval: ['1day', '1h'],
-        outputsize: uppercaseSymbol.length * 2,
-        timezone: 'Europe/Moscow'
-
-      })
-    ]);
-
- 
-
-    console.log(`Данные для :`, { daily: dailyRes}, dailyRes.values);
-
-    const result = {
-        symbol: uppercaseSymbol,
-        daily: dailyRes.values?.[0] || null, // Берем первую (и единственную)
-
-    };
-
-
-
-    return result;
-  } catch (error) {
-    return { symbol, daily: null, hourly: null, error: "API Error" };
-  }
-}
-
-export async function fetchForexPairs() {
-  try {
-    const response = await sdk.forexPairs({});
-    
-    if (response.status === 'error') {
-      throw new Error(response.message);
-    }
-
-    // Возвращаем только нужные данные (например, первые 100 популярных или все)
-    // Данные приходят в поле .data
-    return response.data || [];
-  } catch (error: any) {
-    console.error("Ошибка при получении списка пар:", error);
-    return [];
-  }
-}
-
-
-
-interface TradeSignal {
-  symbol: string;
-  type: 'BUY' | 'SELL';
-  entryPrice: number;
-  entryTime: string;
-  targetPrice: number;
-  resultTime: string | null;
-  candlesPassed: number | null;
-}
-
-export async function analyzeMajorForexSignals(symbol: string, startDay: any, endDay: any, takeProfit: number): Promise<unknown> {
-  const uppercaseSymbol = symbol.toUpperCase(); // Убираем слэш для Twelve Data
-  
-  // 1. Настройка временного диапазона (вчерашний торговый день)
-  // const startDay = DateTime..now().setZone('Europe/Moscow').minus({ days: 9 });
-  // const endDay = DateTime.now().setZone('Europe/Moscow').minus({ days: 5 });
-  const start_date = startDay
-  const end_date = endDay
-
-  try {
-    const response = await sdk.timeSeries({
-     symbol: uppercaseSymbol,
-      interval: '1h',
-      start_date,
-      end_date,
-      timezone: 'Europe/Moscow',
-      order: 'ASC' // От старых к новым
+    // Приводим данные к формату Twelve Data (строковые значения)
+    const formatCandle = (c: any) => ({
+      datetime: typeof c.date === 'number' 
+        ? DateTime.fromSeconds(c.date).toFormat('yyyy-MM-dd HH:mm:ss')
+        : c.date,
+      open: c.open.toString(),
+      high: c.high.toString(),
+      low: c.low.toString(),
+      close: c.close.toString(),
+      volume: c.volume?.toString() ||  "0" // MarketCheese не всегда отдает объем в этом эндпоинте
     });
 
-    if (response.status === 'error') throw new Error(response.message);
+    // console.log(`MarketCheese сырые данные для ${symbol}:`, { daily: dailyRes, hourly: hourlyRes }); 
 
-    console.log(`Свечи для ${uppercaseSymbol} за вчерашний день:`, response.values.length);
-
-    const candles = response.values;
-    if (!candles || candles.length < 3) return [];
-
-    const signals: TradeSignal[] = [];
     
-    // Определяем стоимость пункта для мажоров
-    // Для JPY пар пункт — это 0.001, для остальных — 0.00001
-    const isJpyPair = uppercaseSymbol.includes('JPY');
-    const POINT = isJpyPair ? 0.001 : 0.00001;
-    const TARGET_DIFF = takeProfit * POINT;
+    const dailyCandle = formatCandle(dailyRes[1]); // Берем последнюю полностью закрытую дневную
+    
+    
+    const hourlyCandles = [formatCandle(hourlyRes[1]), formatCandle(hourlyRes[0])];
 
-    const dayOpen = parseFloat(candles[0].open);
+    const result: CombinedSymbolData = {
+      symbol: symbol.toUpperCase(),
+      daily: dailyCandle,
+      hourly: hourlyCandles,
+    };
 
-    // 2. Перебор часовых свечей (начиная со второй, чтобы иметь пару C1 и C2)
-    for (let i = 1; i < candles.length - 1; i++) {
-        if(candles[i].datetime < start_date || candles[i].datetime > end_date) return; 
-      const c1 = candles[i - 1];
-      const c2 = candles[i];
-      const c3 = candles[i + 1] || null; // На случай, если это последняя свеча дня
+    // ВЫЗОВ БОТА
+    if (result.daily && result.hourly && bot) {
+      // Функция sendSignalNotification должна уметь работать с этим форматом
+      sendSignalNotification(result).catch(console.error);
+    }
 
-      console.log(`Анализ свечей для ${uppercaseSymbol} - C1: ${c1.datetime}, C2: ${c2.datetime}`);
+    return result;
+  } catch (error) {
+    console.error(`Ошибка MarketCheese для ${symbol}:`, error);
+    return { symbol, daily: null, hourly: null, error: "MarketCheese API Error" };
+  }
+}
 
-          // 1. Парсим дату из строки (формат SQL: 2026-04-02 21:00:00)
-      const dt = DateTime.fromFormat(c2.datetime, 'yyyy-MM-dd HH:mm:ss');
+export async function analyzeMarketCheeseSignals(
+  symbolName: string, 
+  startDate: string, // Формат 'yyyy-MM-dd'
+  endDate: string,   // Формат 'yyyy-MM-dd'
+  takeProfitPoints: number = 150
+) {
+  const symbolId = SYMBOL_MAP[symbolName] || 68;
+  
+  // 1. Рассчитываем параметры для API
+  const startDt = DateTime.fromISO(startDate);
+  const endDt = DateTime.fromISO(endDate).endOf('day'); // До конца дня
+  
+  // Считаем сколько часов между датами, чтобы понять, какой 'count' запросить (с запасом)
+  const hoursDiff = Math.ceil(endDt.diff(startDt, 'hours').hours);
+  const count = Math.max(hoursDiff + 100, 200); // Минимум 200, либо по разнице дат + запас для поиска ТП
+  
+  // Для API MarketCheese параметр date — это точка, ОТ которой он пойдет назад
+  const dateParam = endDt.toFormat('yyyyMMddHHmm');
+  
+  const url = `https://api.marketcheese.com/widgets/charts/quotes?symbol=${symbolId}&timeframe=H1&direction=-1&count=${count}&date=${dateParam}`;
 
-      // 2. Проверяем день недели (6 - суббота, 7 - воскресенье)
-      const isWeekend = dt.weekday === 6 || dt.weekday === 7;
+  try {
+    const response = await fetch(url);
+    const rawDataJson: MarketCheeseResponse = await response.json();
+    const rawData = rawDataJson.data.items;
 
-      // 3. Пропускаем итерацию, если это выходной
-      if (isWeekend) continue;
+    // 2. Обработка входящих свечей
+    const candles: MarketCheeseCandle[] = rawData.map((c: any) => {
+      const dt = DateTime.fromSeconds(c.date);
+      return {
+        dt,
+        dateStr: dt.toFormat('yyyy-MM-dd'),
+        fullTimeStr: dt.toFormat('yyyy-MM-dd HH:mm:ss'),
+        open: parseFloat(c.open),
+        high: parseFloat(c.high),
+        low: parseFloat(c.low),
+        close: parseFloat(c.close)
+      };
+    }).reverse(); // Переворачиваем, чтобы идти от старых к новым
 
-      // --- НОВОЕ УСЛОВИЕ: ПРОВЕРКА ВРЕМЕНИ ---
-      // Извлекаем час из строки datetime (формат "YYYY-MM-DD HH:mm:ss")
-      const currentHour = parseInt(c2.datetime.split(' ')[1].split(':')[0]);
+    if (candles.length < 2) return [];
 
-      // Проверяем, входит ли час закрытия сигнальной свечи в диапазон 08:00 - 20:00
-      const isWithinTimeRange = currentHour >= 8 && currentHour <= 20;
+    const signals = [];
+    const POINT = symbolName.includes('JPY') || symbolName.includes('XAU') ? 0.01 : 0.00001;
+    const TARGET_DIFF = takeProfitPoints * POINT;
 
-      const c1_open = parseFloat(c1.open);
-      const c1_close = parseFloat(c1.close);
-      const c2_open = parseFloat(c2.open);
-      const c2_close = parseFloat(c2.close);
+    // 3. Получаем список уникальных рабочих дней в периоде
+    const uniqueDays = Array.from(new Set(
+      candles
+        .filter(c => c.dt >= startDt && c.dt <= endDt && c.dt.weekday < 6)
+        .map(c => c.dateStr)
+    ));
 
-      // Формируем направление "дневной свечи" на текущий момент
-      const isDayBullish = c2_close > dayOpen;
-      const isDayBearish = c2_close < dayOpen;
+    // 4. Основной цикл по дням
+    for (const day of uniqueDays) {
+      const dayCandles = candles.filter(c => c.dateStr === day);
+      if (dayCandles.length === 0) continue;
 
-      // Проверяем направление двух часовых свечей
-      const areHourliesBullish = c1_close > c1_open && c2_close > c2_open;
-      const areHourliesBearish = c1_close < c1_open && c2_close < c2_open;
+      const dayOpen = dayCandles[0].open; // Цена открытия дня
 
-      let signalType: 'BUY' | 'SELL' | null = null;
-      let targetPrice = 0;
+      // Проходим по свечам внутри дня
+      for (let i = 1; i < dayCandles.length; i++) {
+        const c1 = dayCandles[i - 1];
+        const c2 = dayCandles[i];
 
-      if (isDayBullish && areHourliesBullish && isWithinTimeRange) {
-        signalType = 'BUY';
-        targetPrice = c2_close + TARGET_DIFF;
-      } else if (isDayBearish && areHourliesBearish && isWithinTimeRange) {
-        signalType = 'SELL';
-        targetPrice = c2_close - TARGET_DIFF;
-      }
+        // Фильтр по времени: 08:00 - 20:00
+        if (c2.dt.hour < 8 || c2.dt.hour > 20) continue;
 
-      if (signalType) {
-        let resultTime: string | null = null;
-        let candlesCount: number  = 0;
+        // Логика направления (ваша стратегия)
+        const isDayBullish = c2.close > dayOpen;
+        const isDayBearish = c2.close < dayOpen;
+        const areHourliesBullish = c1.close > c1.open && c2.close > c2.open;
+        const areHourliesBearish = c1.close < c1.open && c2.close < c2.open;
 
-        // 3. Слежка за достижением цели в последующих свечах до конца дня
-        for (let j = i + 1; j < candles.length; j++) {
-          const futureCandle = candles[j];
-          const high = parseFloat(futureCandle.high);
-          const low = parseFloat(futureCandle.low);
+        let signalType: 'BUY' | 'SELL' | null = null;
+        if (isDayBullish && areHourliesBullish) signalType = 'BUY';
+        if (isDayBearish && areHourliesBearish) signalType = 'SELL';
 
-          const dt = DateTime.fromFormat(candles[j].datetime, 'yyyy-MM-dd HH:mm:ss');
+        if (signalType) {
+          const entryPrice = c2.close;
+          const targetPrice = signalType === 'BUY' ? entryPrice + TARGET_DIFF : entryPrice - TARGET_DIFF;
+          
+          let resultTime = null;
+          let candlesPassed = null;
 
-          // 2. Проверяем день недели (6 - суббота, 7 - воскресенье)
-          const isWeekend = dt.weekday === 6 || dt.weekday === 7;
-
-          // 3. Пропускаем итерацию, если это выходной
-          if (isWeekend) continue;
-          candlesCount++
-          if (signalType === 'BUY' && high >= targetPrice) {
-            resultTime = futureCandle.datetime;
-            // candlesCount = j - i;
-            break;
+          // Ищем достижение цели во ВСЕХ последующих свечах массива
+          const globalIdx = candles.findIndex(c => c.fullTimeStr === c2.fullTimeStr);
+          for (let j = globalIdx + 1; j < candles.length; j++) {
+            const future = candles[j];
+            if (signalType === 'BUY' && future.high >= targetPrice) {
+              resultTime = future.fullTimeStr;
+              candlesPassed = j - globalIdx;
+              break;
+            }
+            if (signalType === 'SELL' && future.low <= targetPrice) {
+              resultTime = future.fullTimeStr;
+              candlesPassed = j - globalIdx;
+              break;
+            }
           }
-          if (signalType === 'SELL' && low <= targetPrice) {
-            resultTime = futureCandle.datetime;
-            // candlesCount = j - i;
-            break;
-          }
-        }
 
-        if (resultTime !== null) {
           signals.push({
-            symbol: uppercaseSymbol,
+            symbol: symbolName,
             type: signalType,
-            entryPrice: c2_close,
-            entryTime: c3?.datetime,
+            entryPrice: parseFloat(entryPrice.toFixed(5)),
+            entryTime: c2.fullTimeStr,
             targetPrice: parseFloat(targetPrice.toFixed(5)),
             resultTime,
-            candlesPassed: candlesCount
+            candlesPassed
           });
         }
       }
@@ -308,7 +236,7 @@ export async function analyzeMajorForexSignals(symbol: string, startDay: any, en
 
     return signals;
   } catch (error) {
-    console.error(`Ошибка анализа для ${symbol}:`, error);
+    console.error("MarketCheese API Error:", error);
     return [];
   }
 }

@@ -12,7 +12,8 @@ import {
   Calendar as CalendarIcon
 } from 'lucide-react';
 import { DateTime } from 'luxon';
-import { analyzeMajorForexSignals } from '../actions/forexActions';
+import { analyzeMarketCheeseSignals } from '../actions/forexActions';
+import { ALL_SYMBOLS } from '@/lib/forexUtils';
 
 // Типизация для сигналов
 interface TradeSignal {
@@ -25,14 +26,11 @@ interface TradeSignal {
   candlesPassed: number | null;
 }
 
-const MAJOR_PAIRS = [
-  'EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 
-  'AUD/USD', 'USD/CAD', 'NZD/USD', 'XAU/USD'
-];
+
 
 export default function StatisticsPage() {
   // --- Состояния фильтров и параметров ---
-  const [selectedPair, setSelectedPair] = useState(MAJOR_PAIRS[0]);
+  const [selectedPair, setSelectedPair] = useState(ALL_SYMBOLS[0]);
 
   const [takeProfit, setTakeProfit] = useState(150);
   
@@ -58,36 +56,12 @@ export default function StatisticsPage() {
   const handleAnalyze = async () => {
     setIsLoading(true);
 
-    const result = await analyzeMajorForexSignals(selectedPair, startDate, endDate, takeProfit) as unknown as TradeSignal[];
+    const result = await analyzeMarketCheeseSignals(selectedPair, startDate, endDate, takeProfit) as unknown as TradeSignal[];
+
+    // const result = await analyzeMajorForexSignals(selectedPair, startDate, endDate, takeProfit) as unknown as TradeSignal[];
     console.log('Результат анализа:', result);
     setData(result); // Преобразуем результат в массив для отображения
     setIsLoading(false);
-    
-    // // Эмуляция задержки сети
-    // setTimeout(() => {
-    //   setIsLoading(false);
-    //   // Тестовые данные для проверки верстки
-    //   setData([
-    //     { 
-    //       symbol: 'EUR/USD', 
-    //       type: 'BUY', 
-    //       entryPrice: 1.08520, 
-    //       entryTime: '2026-04-20 10:00:00', 
-    //       targetPrice: 1.08670, 
-    //       resultTime: '2026-04-20 14:00:00', 
-    //       candlesPassed: 4 
-    //     },
-    //     { 
-    //       symbol: 'GBP/USD', 
-    //       type: 'SELL', 
-    //       entryPrice: 1.24205, 
-    //       entryTime: '2026-04-21 09:00:00', 
-    //       targetPrice: 1.24055, 
-    //       resultTime: null, 
-    //       candlesPassed: null 
-    //     },
-    //   ]);
-    // }, 800);
   };
 
   // Простая фильтрация по типу сигнала или паре
@@ -117,7 +91,7 @@ export default function StatisticsPage() {
             onChange={(e) => setSelectedPair(e.target.value)}
             className="w-full bg-slate-100 dark:bg-slate-950 shadow-sm rounded-lg p-2.5 text-sm outline-none focus:border-blue-500 text-slate-500 transition-all"
           >
-            {MAJOR_PAIRS.map(pair => <option key={pair} value={pair}>{pair}</option>)}
+            {ALL_SYMBOLS.map(pair => <option key={pair} value={pair}>{pair}</option>)}
           </select>
         </div>
 

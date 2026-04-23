@@ -30,6 +30,30 @@ export const ALL_SYMBOLS = ['AUD/NZD', 'AUD/CHF', 'AUD/CAD', 'AUD/USD', 'AUD/JPY
     'CHF/JPY', 'GBP/CHF',
     'NZD/CAD', 'NZD/CHF', 'NZD/JPY', 'NZD/USD'];
 
+export const SYMBOL_MAP: Record<string, number> = {
+  'AUD/NZD': 46,
+  'AUD/CHF': 44,
+  'AUD/CAD': 43,
+  'AUD/USD': 48,
+  'AUD/JPY': 4,
+  'EUR/AUD': 55,
+  'EUR/CHF': 57,
+  'EUR/CAD': 56,
+  'EUR/GBP': 59,
+  'EUR/USD': 68,
+  'EUR/JPY': 60,
+  // 'EUR/NZD': 12,
+  'USD/CHF': 83,
+  'USD/CAD': 82,
+  'USD/JPY': 87,
+  'USD/CNY': 84,
+  // 'CHF/JPY': 17,
+  'GBP/CHF': 72,
+  'NZD/CAD': 75,
+  'NZD/CHF': 76,
+  'NZD/JPY': 78,
+  'NZD/USD': 80
+};
 
 export const DEFAULT_CONFIG = {
   apiInterval: 8, // в секундах

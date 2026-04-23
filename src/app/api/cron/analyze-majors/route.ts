@@ -1,7 +1,7 @@
 // src/app/api/cron/analyze-majors/route.ts
 import { NextResponse } from 'next/server';
-import { fetchComplexSymbolData } from '@/app/actions/forexActions';
-import { MAJORS, delay, getAppConfig } from '@/lib/forexUtils';
+import { fetchMarketCheeseComplexData } from '@/app/actions/forexActions';
+import { ALL_SYMBOLS } from '@/lib/forexUtils';
 
 // Это предотвратит кэширование самого запроса к API роуту
 export const dynamic = 'force-dynamic';
@@ -12,25 +12,19 @@ export async function GET(request: Request) {
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return new Response('Unauthorized', { status: 401 });
   }
-
-  const config = getAppConfig();
   
   // Запускаем процесс в фоне
-  runBackgroundAnalysis(config.apiInterval);
+  runBackgroundAnalysis();
 
   return NextResponse.json({ message: 'Анализ запущен' });
 }
 
-async function runBackgroundAnalysis(interval: number) {
-  for (let i = 0; i < MAJORS.length; i++) {
-    const symbol = MAJORS[i];
+async function runBackgroundAnalysis() {
+  for (let i = 0; i < ALL_SYMBOLS.length; i++) {
+    const symbol = ALL_SYMBOLS[i];
     
     // Вызываем нашу существующую функцию (она сама отправит уведомление в ТГ при наличии сигнала)
-    await fetchComplexSymbolData(symbol);
+    await fetchMarketCheeseComplexData(symbol, true);
 
-    // Пауза между мажорами, чтобы не забанили API
-    if (i < MAJORS.length - 1) {
-      await delay(interval * 1000);
-    }
   }
 }

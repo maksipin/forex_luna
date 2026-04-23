@@ -6,28 +6,28 @@ import { fetchMarketCheeseComplexData } from "@/app/actions/forexActions";
 const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN || "");
 
 // Обработка команды /analyze
-bot.command("analyze", async (ctx) => {
-  const chatId = ctx.chat.id.toString();
+// bot.command("analyze", async (ctx) => {
+//   const chatId = ctx.chat.id.toString();
   
-  // Проверка прав (чтобы только ты мог запускать анализ)
-  if (chatId !== process.env.TELEGRAM_CHAT_ID) {
-    return ctx.reply("У вас нет прав для запуска этой команды.");
-  }
+//   // Проверка прав (чтобы только ты мог запускать анализ)
+//   if (chatId !== process.env.TELEGRAM_CHAT_ID) {
+//     return ctx.reply("У вас нет прав для запуска этой команды.");
+//   }
 
-  await ctx.reply("🚀 Запускаю полный анализ мажоров... Это займет несколько минут из-за лимитов API.");
+//   await ctx.reply("🚀 Запускаю полный анализ мажоров... Это займет несколько минут из-за лимитов API.");
 
   
-  // Запускаем цикл анализа
-  for (const symbol of ALL_SYMBOLS) {
-    await ctx.reply(`🔍 Анализирую ${symbol}...`);
+//   // Запускаем цикл анализа
+//   for (const symbol of ALL_SYMBOLS) {
+//     await ctx.reply(`🔍 Анализирую ${symbol}...`);
     
-    // fetchComplexSymbolData уже содержит логику отправки сообщения с результатом
-    await fetchMarketCheeseComplexData(symbol, true);
+//     // fetchComplexSymbolData уже содержит логику отправки сообщения с результатом
+//     await fetchMarketCheeseComplexData(symbol, true);
     
-  }
+//   }
 
-  await ctx.reply("✅ Анализ всех пар завершен.");
-});
+//   await ctx.reply("✅ Анализ всех пар завершен.");
+// });
 
 // Экспортируем функцию для обработки POST-запросов от Telegram
 export const POST = webhookCallback(bot, "std/http");

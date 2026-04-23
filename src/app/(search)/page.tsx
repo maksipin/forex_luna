@@ -20,6 +20,7 @@ import FilterButton from '@/components/FilterButton';
 import ResultCard from '@/components/ResultCard';
 import TabButton from '@/components/TabButton';
 import EconomicCalendar from '@/components/EconomicCalendar';
+import Graph from '@/components/Graph';
 
 export default function ProfessionalForexDashboard() {
   // Состояния для UI
@@ -35,7 +36,7 @@ export default function ProfessionalForexDashboard() {
   const [loadingSymbols, setLoadingSymbols] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState("");
 
   const [filter, setFilter] = useState<'ALL' | 'SIGNALS' | 'NEUTRAL'>('ALL');
 
@@ -154,14 +155,7 @@ export default function ProfessionalForexDashboard() {
             </h1>
             <p className="text-right text-slate-500 text-sm font-medium">Поиск сигналов</p>
           </div>
-          <div className="flex items-center gap-3">
-          <button 
-            onClick={() => setIsSettingsOpen(true)}
-            className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-500 transition-all"
-          >
-            <SettingsIcon size={20} className="text-slate-600 dark:text-slate-400" />
-          </button>
-        </div>
+          
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -180,7 +174,7 @@ export default function ProfessionalForexDashboard() {
               </div> */}
 
               {/* Списки пар */}
-              <div className='flex gap-8 '>
+              <div className='flex flex-col  lg:flex-row gap-8 '>
               <div className="space-y-4">
                 <div className="flex xl:justify-between flex-wrap gap-2">
                   {allPairs.map(symbol => (
@@ -204,9 +198,9 @@ export default function ProfessionalForexDashboard() {
               <button 
                 onClick={handleFetch}
                 disabled={isProcessing || selectedPairs.length === 0}
-                className="w-max h-min bg-slate-900 dark:bg-blue-600 hover:bg-black dark:hover:bg-blue-500 text-white p-4 rounded-xl text-xs tracking-widest transition-all disabled:opacity-50 flex items-center justify-center gap-3 shadow-xl shadow-blue-900/10"
+                className="w-max h-min bg-slate-900 dark:bg-blue-600 hover:bg-black dark:hover:bg-blue-500 text-white p-2 px-4 rounded-xl text-xs tracking-widest transition-all disabled:opacity-50 flex items-center justify-center gap-3 shadow-xl shadow-blue-900/10"
               >
-                {isProcessing ? <Loader2 className="animate-spin w-5 h-5" /> : <RefreshCw size={18}/> }<>ОБНОВИТЬ ЦЕНЫ</>
+                {isProcessing ? <Loader2 className="animate-spin w-5 h-5" /> : <RefreshCw size={18}/> }<>НАЙТИ СИГНАЛЫ</>
               </button>
               </div>
               </div>
@@ -215,60 +209,63 @@ export default function ProfessionalForexDashboard() {
           </aside>
 
          {/* Правая панель: Результаты */}
-<section className="lg:col-span-12 xl:col-span-12">
-  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-    <h2 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
-      Результаты анализа ({results.length})
-    </h2>
+          <section className="lg:col-span-12 xl:col-span-12">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+              <h2 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
+                Результаты анализа ({results.length})
+              </h2>
 
-    {/* Переключатель фильтров */}
-    <div className="flex bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1 rounded-xl shadow-sm">
-      <FilterButton 
-        active={filter === 'ALL'} 
-        onClick={() => setFilter('ALL')} 
-        label="Все" 
-      />
-      <FilterButton 
-        active={filter === 'SIGNALS'} 
-        onClick={() => setFilter('SIGNALS')} 
-        label="Сигналы" 
-        count={results.filter(r => calculateSignal(r) !== 'NEUTRAL').length}
-        color="text-emerald-500"
-      />
-      <FilterButton 
-        active={filter === 'NEUTRAL'} 
-        onClick={() => setFilter('NEUTRAL')} 
-        label="Neutral" 
-      />
-    </div>
-  </div>
+              {/* Переключатель фильтров */}
+              <div className="flex bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1 rounded-xl shadow-sm">
+                <FilterButton 
+                  active={filter === 'ALL'} 
+                  onClick={() => setFilter('ALL')} 
+                  label="Все" 
+                />
+                <FilterButton 
+                  active={filter === 'SIGNALS'} 
+                  onClick={() => setFilter('SIGNALS')} 
+                  label="Сигналы" 
+                  count={results.filter(r => calculateSignal(r) !== 'NEUTRAL').length}
+                  color="text-emerald-500"
+                />
+                <FilterButton 
+                  active={filter === 'NEUTRAL'} 
+                  onClick={() => setFilter('NEUTRAL')} 
+                  label="Neutral" 
+                />
+              </div>
+            </div>
 
-  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-    {filteredResults.map((data) => (
-      <ResultCard key={data.symbol} data={data} loadingSymbols={loadingSymbols} />
-    ))}
-    
-    {/* Состояние "Ничего не найдено" */}
-    {filteredResults.length === 0 && results.length > 0 && (
-      <div className="col-span-full py-20 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[3rem] text-center">
-        <p className="text-slate-400 font-medium italic">Нет результатов, подходящих под выбранный фильтр</p>
-      </div>
-    )}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {filteredResults.map((data) => (
+                <button key={data.symbol} onClick={() => setIsSettingsOpen(data.symbol.replace('/', ''))} className="w-full cursor-pointer">
+                <ResultCard key={data.symbol} data={data} loadingSymbols={loadingSymbols} />
+                </button>
+              ))}
+              
+              {/* Состояние "Ничего не найдено" */}
+              {filteredResults.length === 0 && results.length > 0 && (
+                <div className="col-span-full py-20 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[3rem] text-center">
+                  <p className="text-slate-400 font-medium italic">Нет результатов, подходящих под выбранный фильтр</p>
+                </div>
+              )}
 
-    {/* Скелетоны (те, что еще грузятся, всегда внизу) */}
-    {loadingSymbols
-      .filter(s => !results.find(r => r.symbol === s))
-      .map(symbol => (
-        <SkeletonCard key={symbol} symbol={symbol} />
-      ))
-    }
-  </div>
-</section>
-         <SettingsModal 
-            isOpen={isSettingsOpen} 
-            onClose={() => setIsSettingsOpen(false)} 
-          />
+              {/* Скелетоны (те, что еще грузятся, всегда внизу) */}
+              {loadingSymbols
+                .filter(s => !results.find(r => r.symbol === s))
+                .map(symbol => (
+                  <SkeletonCard key={symbol} symbol={symbol} />
+                ))
+              }
+            </div>
+          </section>
+          {/* <SettingsModal 
+              isOpen={isSettingsOpen} 
+              onClose={() => setIsSettingsOpen(false)} 
+            /> */}
         </div>
+        {isSettingsOpen && <Graph symbol={isSettingsOpen} onClose={() => setIsSettingsOpen('')} />}
          <EconomicCalendar />
       </div>
     </main>

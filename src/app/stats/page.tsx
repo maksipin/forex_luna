@@ -74,7 +74,7 @@ export default function StatisticsPage() {
     const filteredData = data
 
   return (
-    <div className="space-y-6 max-w-[1600px] mx-auto p-8 bg-slate-50 dark:bg-[#0b0e14]">
+    <div className="space-y-6 mx-auto p-8 bg-slate-50 dark:bg-[#0b0e14]">
       <div className="flex justify-between items-center">
         <div>
             <h1 className="text-3xl font-black tracking-tighter flex items-center gap-2">
@@ -88,7 +88,7 @@ export default function StatisticsPage() {
       </div>
 
       {/* --- ВЕРХНЯЯ ПАНЕЛЬ УПРАВЛЕНИЯ --- */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 p-5 bg-white dark:bg-slate-900 rounded-xl mb-6 shadow-lg shadow-blue-900/10">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 p-5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl mb-6 shadow-lg shadow-blue-900/10">
         
         <div>
           <label className="block text-[10px] text-gray-500 mb-2 uppercase tracking-[0.15em] font-bold">Инструмент</label>
@@ -146,7 +146,7 @@ export default function StatisticsPage() {
       </div>
 
       {/* --- ТАБЛИЦА РЕЗУЛЬТАТОВ --- */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl mb-6 shadow-lg shadow-blue-900/10 overflow-hidden shadow-xl">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl mb-6 shadow-lg shadow-blue-900/10 overflow-hidden shadow-xl">
         <div className="p-4 flex flex-col sm:flex-row justify-between items-center gap-4">
           <h2 className="font-semibold text-gray-500 flex items-center gap-2">
             <CalendarIcon size={18} className="text-blue-500" />

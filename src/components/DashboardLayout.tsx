@@ -33,7 +33,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   ];
 
   return (
-    <div className="flex h-screen bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-200 transition-colors duration-300">
+    <div className="flex h-screen bg-slate-50 dark:bg-[#0b0e14] text-slate-900 dark:text-slate-200 transition-colors duration-300">
       
       {/* --- МОБИЛЬНЫЙ ОВЕРЛЕЙ --- */}
       {isMobileOpen && (
@@ -55,7 +55,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         `}
       >
         {/* Хедер панели */}
-        <div className="p-4 h-20 flex items-center justify-center">
+        <div className={`p-4 h-20 flex items-center ${!isCollapsed ? 'justify-between' : 'justify-center'} transition-all duration-300 ease-in-out`}>
           {(!isCollapsed || isMobileOpen) && (
             <div className="flex flex-col">
               <h1 className="text-xl font-black tracking-tighter flex items-center gap-2">

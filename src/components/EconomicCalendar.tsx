@@ -1,11 +1,20 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 export default function EconomicCalendar() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+
+    // Ждем, пока компонент появится в браузере и контейнер будет доступен
+    if (!isClient || !containerRef.current) return;
+
     // 1. Очищаем контейнер перед вставкой (чтобы виджет не дублировался при HMR)
     if (containerRef.current) {
       containerRef.current.innerHTML = '';
@@ -30,10 +39,20 @@ export default function EconomicCalendar() {
     script.setAttribute('data-config', JSON.stringify(config));
 
     // 4. Добавляем скрипт именно внутрь нашего div
-    if (containerRef.current) {
-      containerRef.current.appendChild(script);
-    }
-  }, []);
+   const timer = setTimeout(() => {
+      if (containerRef.current) {
+        containerRef.current.appendChild(script);
+      }
+    }, 3000);
+
+    return () => {
+      clearTimeout(timer);
+      if (containerRef.current) containerRef.current.innerHTML = '';
+    };
+
+  }, [isClient]);
+
+  if (!isClient) return null;
 
   return (
     <div className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4 mt-8 p-4 rounded-3xl shadow-sm">

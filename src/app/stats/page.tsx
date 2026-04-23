@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { 
   Play, 
   Filter, 
@@ -64,12 +64,6 @@ export default function StatisticsPage() {
     setData(result); // Преобразуем результат в массив для отображения
     setIsLoading(false);
   };
-
-  // Простая фильтрация по типу сигнала или паре
-//   const filteredData = data.filter(item => 
-//     item.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
-//     item.type.toLowerCase().includes(searchTerm.toLowerCase())
-//   );
 
     const filteredData = data
 

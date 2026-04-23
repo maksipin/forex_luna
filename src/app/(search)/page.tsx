@@ -3,29 +3,28 @@
 import { useState, useEffect } from 'react';
 import { fetchMarketCheeseComplexData } from '@/app/actions/forexActions';
 import { calculateSignal, ALL_SYMBOLS } from '@/lib/forexUtils';
-import { ThemeToggle } from '@/components/ThemeToggle';
 import { 
   Loader2, 
-  Zap, 
-  Layers, 
-  Search, 
   TrendingUp, 
   RefreshCw, 
-  Save, 
-  SettingsIcon
 } from 'lucide-react';
 import SkeletonCard from '@/components/SkeletonCard';
-import SettingsModal from '@/components/SettingsModal';
 import FilterButton from '@/components/FilterButton';
 import ResultCard from '@/components/ResultCard';
-import TabButton from '@/components/TabButton';
-import EconomicCalendar from '@/components/EconomicCalendar';
-import Graph from '@/components/Graph';
+import dynamic  from 'next/dynamic';
+
+const EconomicCalendar = dynamic(() => import('@/components/EconomicCalendar'), { 
+  ssr: false,
+  loading: () => <div className="h-40 bg-slate-100 dark:bg-slate-800 animate-pulse rounded-3xl" />
+});
+
+const Graph = dynamic(() => import('@/components/Graph'), { 
+  ssr: false 
+});
 
 export default function ProfessionalForexDashboard() {
   // Состояния для UI
-  const [activeTab, setActiveTab] = useState<'fx' | 'majors' | 'crosses' | 'search'>('fx');
-  const [searchQuery, setSearchQuery] = useState('');
+
   const [isLoaded, setIsLoaded] = useState(false);
   
   // Данные
@@ -40,8 +39,12 @@ export default function ProfessionalForexDashboard() {
 
   const [filter, setFilter] = useState<'ALL' | 'SIGNALS' | 'NEUTRAL'>('ALL');
 
-
-
+  const [isMounted, setIsMounted] = useState(false);
+  
+    useEffect(() => {
+      setIsMounted(true);
+    }, []);
+  
   // 1. Инициализация (Загрузка из памяти и API)
   useEffect(() => {
     function init() {
@@ -66,6 +69,9 @@ export default function ProfessionalForexDashboard() {
       localStorage.setItem('selected_forex_pairs', JSON.stringify(selectedPairs));
     }
   }, [selectedPairs, isLoaded]);
+
+      // 3. Чтобы избежать мерцания пустого интерфейса, можно вернуть null или скелетон
+    if (!isMounted) return null;
   
 
   // Обработчик запроса данных
@@ -82,19 +88,7 @@ export default function ProfessionalForexDashboard() {
     // const cached = getCachedData(symbol);
       const cached = null
     
-    if (cached) {
-      // Помечаем данные как кэшированные
-      // const dataWithStatus = { ...cached, isCached: true };
-      
-      // const idx = updatedResults.findIndex(r => r.symbol === symbol);
-      // if (idx > -1) updatedResults[idx] = dataWithStatus;
-      // else updatedResults.push(dataWithStatus);
-      
-      // setResults([...updatedResults]);
-      // setLoadingSymbols(prev => prev.filter(s => s !== symbol));
-      // // Если данные из кэша, задержка не нужна, идем к следующей паре
-    } else {
-      // const data = await fetchComplexSymbolData(symbol, true);
+  
        const data = await fetchMarketCheeseComplexData(symbol, false);
        console.log(`Данные для ${symbol}:`, data);
       
@@ -117,7 +111,6 @@ export default function ProfessionalForexDashboard() {
       if (i < selectedPairs.length - 1) {
         // await delay(config.apiInterval * 1000); 
       }
-    }
   }
   setIsProcessing(false);
 };
@@ -164,14 +157,6 @@ export default function ProfessionalForexDashboard() {
           <aside className="lg:col-span-12 xl:col-span-12 space-y-6">
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-sm">
               <h2 className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase mb-2 tracking-[0.2em]">Выбор пар</h2>
-              
-              {/* Вкладки */}
-              {/* <div className="flex bg-slate-100 dark:bg-slate-950 p-1 rounded-xl mb-6">
-                <TabButton active={activeTab === 'fx'} onClick={() => setActiveTab('fx')} icon={<Zap size={14}/>} label="FX" />
-                <TabButton active={activeTab === 'majors'} onClick={() => setActiveTab('majors')} icon={<Zap size={14}/>} label="Majors" />
-                <TabButton active={activeTab === 'crosses'} onClick={() => setActiveTab('crosses')} icon={<Layers size={14}/>} label="Cross" />
-                <TabButton active={activeTab === 'search'} onClick={() => setActiveTab('search')} icon={<Search size={14}/>} label="All" />
-              </div> */}
 
               {/* Списки пар */}
               <div className='flex flex-col  lg:flex-row gap-8 '>
@@ -260,10 +245,6 @@ export default function ProfessionalForexDashboard() {
               }
             </div>
           </section>
-          {/* <SettingsModal 
-              isOpen={isSettingsOpen} 
-              onClose={() => setIsSettingsOpen(false)} 
-            /> */}
         </div>
         {isSettingsOpen && <Graph symbol={isSettingsOpen} onClose={() => setIsSettingsOpen('')} />}
          <EconomicCalendar />

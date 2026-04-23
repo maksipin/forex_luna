@@ -1,7 +1,7 @@
 // src/app/api/bot/route.ts
 import { Bot, webhookCallback } from "grammy";
-import { MAJORS, getAppConfig } from "@/lib/forexUtils";
-import { fetchComplexSymbolData } from "@/app/actions/forexActions";
+import { ALL_SYMBOLS } from "@/lib/forexUtils";
+import { fetchMarketCheeseComplexData } from "@/app/actions/forexActions";
 
 const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN || "");
 
@@ -16,19 +16,14 @@ bot.command("analyze", async (ctx) => {
 
   await ctx.reply("🚀 Запускаю полный анализ мажоров... Это займет несколько минут из-за лимитов API.");
 
-  const config = getAppConfig();
-
-  const pairs = MAJORS.slice(0,3); // Можно добавить другие пары по желанию
   
   // Запускаем цикл анализа
-  for (const symbol of MAJORS) {
+  for (const symbol of ALL_SYMBOLS) {
     await ctx.reply(`🔍 Анализирую ${symbol}...`);
     
     // fetchComplexSymbolData уже содержит логику отправки сообщения с результатом
-    await fetchComplexSymbolData(symbol, true);
+    await fetchMarketCheeseComplexData(symbol, true);
     
-    // Пауза между запросами
-    // await new Promise(resolve => setTimeout(resolve, config.apiInterval * 1000));
   }
 
   await ctx.reply("✅ Анализ всех пар завершен.");

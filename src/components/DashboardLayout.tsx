@@ -10,7 +10,8 @@ import {
   Menu, 
   ChevronLeft, 
   TrendingUp,
-  X
+  X,
+  Calendar
 } from 'lucide-react'; // Используем lucide-react для иконок
 import { ThemeToggle } from './ThemeToggle';
 
@@ -27,7 +28,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const menuItems = [
     { name: 'Поиск сигналов', href: '/', icon: Search },
-    { name: 'Анализ статистики', href: '/stats', icon: BarChart2 },
+    { name: 'Экономический календарь', href: '/calendar', icon: Calendar },
+    { name: 'Анализ статистики', href: '/statistic', icon: BarChart2 },
     { name: 'Настройки', href: '/settings', icon: Settings },
   ];
 
@@ -100,7 +102,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 `}
               >
                 <Icon size={22} className="min-w-[22px]" />
-                {showText && <span className="ml-4 font-semibold whitespace-nowrap">{item.name}</span>}
+                {showText && <span className="ml-4 whitespace-nowrap">{item.name}</span>}
               </Link>
             );
           })}

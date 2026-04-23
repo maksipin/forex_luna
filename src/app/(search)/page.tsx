@@ -12,11 +12,8 @@ import SkeletonCard from '@/components/SkeletonCard';
 import FilterButton from '@/components/FilterButton';
 import ResultCard from '@/components/ResultCard';
 import dynamic  from 'next/dynamic';
+// import Graph from '@/components/Graph';
 
-const EconomicCalendar = dynamic(() => import('@/components/EconomicCalendar'), { 
-  ssr: false,
-  loading: () => <div className="h-40 bg-slate-100 dark:bg-slate-800 animate-pulse rounded-3xl" />
-});
 
 const Graph = dynamic(() => import('@/components/Graph'), { 
   ssr: false 
@@ -247,7 +244,6 @@ export default function ProfessionalForexDashboard() {
           </section>
         </div>
         {isSettingsOpen && <Graph symbol={isSettingsOpen} onClose={() => setIsSettingsOpen('')} />}
-         <EconomicCalendar />
       </div>
     </main>
   );

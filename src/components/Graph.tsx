@@ -1,12 +1,18 @@
 'use client';
 
+import React, { useEffect, useRef, useState } from 'react';
 import { Settings, X } from 'lucide-react';
 import { useTheme } from 'next-themes';
-import React, { useEffect, useRef } from 'react';
 
 export default function Graph({symbol = 'EURUSD', onClose}: {symbol?: string, onClose?: () => void}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { theme } = useTheme();
+  const scriptId = `mc-script-graph-${symbol}`;
+  const [isClient, setIsClient] = useState(false);
+  
+    useEffect(() => {
+      setIsClient(true);
+    }, []);
 
   useEffect(() => {
     // 1. Очищаем контейнер перед вставкой (чтобы виджет не дублировался при HMR)
@@ -14,10 +20,14 @@ export default function Graph({symbol = 'EURUSD', onClose}: {symbol?: string, on
       containerRef.current.innerHTML = '';
     }
 
+    const oldScript = document.getElementById(scriptId);
+    if (oldScript) oldScript.remove();
+
     // 2. Создаем элемент скрипта вручную
     const script = document.createElement('script');
     script.src = 'https://api.marketcheese.com/widgets/chart/widget.js';
     script.async = true;
+    script.id = scriptId;
     
     // 3. Передаем конфиг через атрибут
     const config = {
@@ -38,11 +48,29 @@ export default function Graph({symbol = 'EURUSD', onClose}: {symbol?: string, on
     };
     script.setAttribute('data-config', JSON.stringify(config));
 
-    // 4. Добавляем скрипт именно внутрь нашего div
-    if (containerRef.current) {
-      containerRef.current.appendChild(script);
-    }
-  }, []);
+        // 4. Добавляем скрипт именно внутрь нашего div
+   const timer = setTimeout(() => {
+      if (containerRef.current) {
+        containerRef.current.appendChild(script);
+      }
+    }, 100);
+
+    return () => {
+      clearTimeout(timer);
+      if (containerRef.current) containerRef.current.innerHTML = '';
+      
+      // Удаляем скрипт из DOM
+      const scriptToRemove = document.getElementById(scriptId);
+      if (scriptToRemove) scriptToRemove.remove();
+
+      // Очищаем глобальные переменные виджета, если они есть
+      // Это предотвратит конфликты, когда новый виджет увидит "старые" настройки
+      if (typeof window !== 'undefined') {
+        // @ts-ignore
+        delete window.MarketCheese; 
+      }
+    };
+  }, [isClient]);
 
   return (
       <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
@@ -58,6 +86,7 @@ export default function Graph({symbol = 'EURUSD', onClose}: {symbol?: string, on
       
       {/* Основной контейнер виджета */}
       <div 
+      datatype='chart'
         ref={containerRef} 
         className="marketcheese-widget-container p-4 w-full bg-white dark:bg-slate-900 min-h-[600px] overflow-hidden"
       >

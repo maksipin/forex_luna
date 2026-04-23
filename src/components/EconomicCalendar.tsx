@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 
 export default function EconomicCalendar() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const scriptId = `mc-script-economic-calendar`;
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
@@ -20,10 +21,14 @@ export default function EconomicCalendar() {
       containerRef.current.innerHTML = '';
     }
 
+    const oldScript = document.getElementById(scriptId);
+    if (oldScript) oldScript.remove();
+
     // 2. Создаем элемент скрипта вручную
     const script = document.createElement('script');
     script.src = 'https://api.marketcheese.com/widgets/calendar/widget.js';
     script.async = true;
+    script.id = scriptId;
     
     // 3. Передаем конфиг через атрибут
     const config = {
@@ -43,11 +48,22 @@ export default function EconomicCalendar() {
       if (containerRef.current) {
         containerRef.current.appendChild(script);
       }
-    }, 3000);
+    }, 100);
 
     return () => {
       clearTimeout(timer);
       if (containerRef.current) containerRef.current.innerHTML = '';
+      
+      // Удаляем скрипт из DOM
+      const scriptToRemove = document.getElementById(scriptId);
+      if (scriptToRemove) scriptToRemove.remove();
+
+      // Очищаем глобальные переменные виджета, если они есть
+      // Это предотвратит конфликты, когда новый виджет увидит "старые" настройки
+      if (typeof window !== 'undefined') {
+        // @ts-ignore
+        delete window.MarketCheese; 
+      }
     };
 
   }, [isClient]);

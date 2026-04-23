@@ -36,7 +36,7 @@ export default function EconomicCalendar() {
   }, []);
 
   return (
-    <div className="w-full bg-white dark:bg-[#0b0e14] space-y-4 mt-4 p-4 rounded-3xl shadow-sm">
+    <div className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4 mt-8 p-4 rounded-3xl shadow-sm">
       <h2 className="text-xl font-bold text-slate-500 flex items-center gap-2">
         <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
         Экономический календарь
@@ -45,7 +45,7 @@ export default function EconomicCalendar() {
       {/* Основной контейнер виджета */}
       <div 
         ref={containerRef} 
-        className="marketcheese-widget-container p-4 w-full bg-white dark:bg-[#0b0e14] min-h-[600px] overflow-hidden"
+        className="marketcheese-widget-container p-4 w-full bg-white dark:bg-slate-900 min-h-[600px] overflow-hidden"
       >
         {/* Сюда скрипт вставит iframe календаря */}
       </div>

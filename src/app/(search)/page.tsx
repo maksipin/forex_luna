@@ -23,7 +23,7 @@ import EconomicCalendar from '@/components/EconomicCalendar';
 
 export default function ProfessionalForexDashboard() {
   // Состояния для UI
-  const [activeTab, setActiveTab] = useState<'fx' | 'majors' | 'crosses' | 'search'>('majors');
+  const [activeTab, setActiveTab] = useState<'fx' | 'majors' | 'crosses' | 'search'>('fx');
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoaded, setIsLoaded] = useState(false);
   
@@ -152,7 +152,7 @@ export default function ProfessionalForexDashboard() {
             <h1 className="text-3xl font-black tracking-tighter flex items-center gap-2">
               <TrendingUp className="text-blue-500" /> FOREX LUNA
             </h1>
-            <p className="text-slate-500 text-sm font-medium">Анализ японских свечей и сигналы</p>
+            <p className="text-right text-slate-500 text-sm font-medium">Поиск сигналов</p>
           </div>
           <div className="flex items-center gap-3">
           <button 
@@ -167,31 +167,22 @@ export default function ProfessionalForexDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
           {/* Левая панель: Инструменты */}
-          <aside className="lg:col-span-4 xl:col-span-4 space-y-6">
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
-              <h2 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase mb-6 tracking-[0.2em]">Выбор пар</h2>
+          <aside className="lg:col-span-12 xl:col-span-12 space-y-6">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-sm">
+              <h2 className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase mb-2 tracking-[0.2em]">Выбор пар</h2>
               
               {/* Вкладки */}
-              <div className="flex bg-slate-100 dark:bg-slate-950 p-1 rounded-xl mb-6">
+              {/* <div className="flex bg-slate-100 dark:bg-slate-950 p-1 rounded-xl mb-6">
                 <TabButton active={activeTab === 'fx'} onClick={() => setActiveTab('fx')} icon={<Zap size={14}/>} label="FX" />
                 <TabButton active={activeTab === 'majors'} onClick={() => setActiveTab('majors')} icon={<Zap size={14}/>} label="Majors" />
                 <TabButton active={activeTab === 'crosses'} onClick={() => setActiveTab('crosses')} icon={<Layers size={14}/>} label="Cross" />
                 <TabButton active={activeTab === 'search'} onClick={() => setActiveTab('search')} icon={<Search size={14}/>} label="All" />
-              </div>
+              </div> */}
 
               {/* Списки пар */}
-              <div className="space-y-4 min-h-[200px]">
-                {activeTab === 'search' && (
-                  <input 
-                    type="text" 
-                    placeholder="Поиск (напр. BTC/USD)..."
-                    className="w-full bg-slate-50 dark:bg-black border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-sm focus:ring-2 ring-blue-500 outline-none transition-all"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                )}
-
-                <div className="flex flex-wrap gap-2">
+              <div className='flex gap-8 '>
+              <div className="space-y-4">
+                <div className="flex xl:justify-between flex-wrap gap-2">
                   {allPairs.map(symbol => (
                     <button 
                       key={symbol}
@@ -209,22 +200,25 @@ export default function ProfessionalForexDashboard() {
               </div>
 
               {/* Кнопка запуска */}
+              <div className="h-min">
               <button 
                 onClick={handleFetch}
                 disabled={isProcessing || selectedPairs.length === 0}
-                className="w-full mt-8 bg-slate-900 dark:bg-blue-600 hover:bg-black dark:hover:bg-blue-500 text-white py-4 rounded-2xl font-black text-sm tracking-widest transition-all disabled:opacity-50 flex items-center justify-center gap-3 shadow-xl shadow-blue-900/10"
+                className="w-max h-min bg-slate-900 dark:bg-blue-600 hover:bg-black dark:hover:bg-blue-500 text-white p-4 rounded-xl text-xs tracking-widest transition-all disabled:opacity-50 flex items-center justify-center gap-3 shadow-xl shadow-blue-900/10"
               >
-                {isProcessing ? <Loader2 className="animate-spin w-5 h-5" /> : <><RefreshCw size={18}/> ОБНОВИТЬ ЦЕНЫ</>}
+                {isProcessing ? <Loader2 className="animate-spin w-5 h-5" /> : <RefreshCw size={18}/> }<>ОБНОВИТЬ ЦЕНЫ</>
               </button>
+              </div>
+              </div>
 
             </div>
           </aside>
 
          {/* Правая панель: Результаты */}
-<section className="lg:col-span-8 xl:col-span-8">
+<section className="lg:col-span-12 xl:col-span-12">
   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
     <h2 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
-      Результаты анализа ({filteredResults.length})
+      Результаты анализа ({results.length})
     </h2>
 
     {/* Переключатель фильтров */}
@@ -249,7 +243,7 @@ export default function ProfessionalForexDashboard() {
     </div>
   </div>
 
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
     {filteredResults.map((data) => (
       <ResultCard key={data.symbol} data={data} loadingSymbols={loadingSymbols} />
     ))}

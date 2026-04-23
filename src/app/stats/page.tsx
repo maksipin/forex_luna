@@ -9,7 +9,8 @@ import {
   ArrowUpCircle, 
   ArrowDownCircle,
   X,
-  Calendar as CalendarIcon
+  Calendar as CalendarIcon,
+  TrendingUp
 } from 'lucide-react';
 import { DateTime } from 'luxon';
 import { analyzeMarketCheeseSignals } from '../actions/forexActions';
@@ -75,7 +76,12 @@ export default function StatisticsPage() {
   return (
     <div className="space-y-6 max-w-[1600px] mx-auto p-8 bg-slate-50 dark:bg-[#0b0e14]">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-slate-500">Анализ статистики</h1>
+        <div>
+            <h1 className="text-3xl font-black tracking-tighter flex items-center gap-2">
+              <TrendingUp className="text-blue-500" /> FOREX LUNA
+            </h1>
+            <p className="text-right text-slate-500 text-sm font-medium">Анализ статистики</p>
+          </div>
         <div className="text-sm text-gray-500">
           Найдено сигналов: <span className="text-blue-400">{filteredData.length}</span>
         </div>

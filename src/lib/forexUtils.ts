@@ -83,7 +83,7 @@ export function getCachedData(symbol: string): any | null {
 export const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
 export function formatCandleHour(datetime: string): string {
-  const date = new Date(datetime);
+  const date = new Date(new Date(datetime).toLocaleString("en-US", {timeZone: "Europe/Moscow"}));
   return `${date.getHours()}H`;
 }
 

@@ -5,7 +5,7 @@ export default function ResultCard({ data, loadingSymbols }: { data: any; loadin
   const signal = calculateSignal(data);
   
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] p-7 shadow-sm relative overflow-hidden">
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] p-5 shadow-sm relative overflow-hidden">
       {/* Тонкая полоска-индикатор сверху */}
       <div className={`absolute top-0 left-0 right-0 h-1 ${data.isCached ? 'bg-amber-400/50' : 'bg-blue-500'}`} />
 
@@ -29,14 +29,14 @@ export default function ResultCard({ data, loadingSymbols }: { data: any; loadin
         </div>
       </div>
       
-      <div className="flex justify-between items-end bg-slate-50 dark:bg-black/40 p-8 rounded-[1.5rem] border border-slate-100 dark:border-white/5 h-44 relative">
+      <div className="flex justify-between items-end bg-slate-50 dark:bg-black/40 p-6 px-4 rounded-[1.5rem] border border-slate-100 dark:border-white/5 h-44 relative">
         {/* Дневная свеча */}
         <CandleWithLabel label="Daily" data={data.daily} />
         
         <div className="w-px h-20 bg-slate-200 dark:bg-slate-800 self-center" />
         
         {/* Часовые свечи с динамическими метками времени */}
-        <div className="flex gap-12">
+        <div className="flex gap-2">
           {data.hourly?.map((h: any, i: number) => (
             <CandleWithLabel 
               key={h.datetime}

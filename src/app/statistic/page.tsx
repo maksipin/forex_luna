@@ -10,11 +10,13 @@ import {
   ArrowDownCircle,
   X,
   Calendar as CalendarIcon,
-  TrendingUp
+  TrendingUp,
+  BarChart
 } from 'lucide-react';
 import { DateTime } from 'luxon';
 import { analyzeMarketCheeseSignals } from '../actions/forexActions';
 import { ALL_SYMBOLS } from '@/lib/forexUtils';
+import Graph from '@/components/Graph';
 
 // Типизация для сигналов
 interface TradeSignal {
@@ -25,6 +27,7 @@ interface TradeSignal {
   targetPrice: number;
   resultTime: string | null;
   candlesPassed: number | null;
+  rsi: number;
 }
 
 
@@ -43,11 +46,12 @@ export default function StatisticsPage() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [isMounted, setIsMounted] = useState(false);
+  const [isChartOpen, setIsChartOpen] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
-    setStartDate(DateTime.now().minus({ days: 7 }).toFormat('yyyy-MM-dd HH:mm:ss'));
-    setEndDate(DateTime.now().toFormat('yyyy-MM-dd HH:mm:ss'));
+    // setStartDate(DateTime.now().minus({ days: 7 }).toFormat('yyyy-MM-dd HH:mm:ss'));
+    // setEndDate(DateTime.now().toFormat('yyyy-MM-dd HH:mm:ss'));
   }, []);
 
   // 3. Чтобы избежать мерцания пустого интерфейса, можно вернуть null или скелетон
@@ -68,7 +72,15 @@ export default function StatisticsPage() {
     const filteredData = data
 
   return (
-    <div className="space-y-6 mx-auto p-8 bg-slate-50 dark:bg-[#0b0e14]">
+    <div className="relative space-y-6 mx-auto p-8 bg-slate-50 dark:bg-[#0b0e14]">
+        <div className="fixed bottom-10 right-14 flex justify-center items-end gap-3">
+          <button 
+            onClick={() => setIsChartOpen(true)}
+            className="text-slate-500 p-2.5 rounded-lg bg-slate-100 dark:bg-slate-950 shadow-sm border border-slate-200 dark:border-slate-800 hover:border-blue-500 transition-all"
+          >
+            <BarChart size={20} className="text-slate-600 dark:text-slate-400" />
+          </button>
+        </div>
       <div className="flex justify-between items-center">
         <div>
             <h1 className="text-3xl font-black tracking-tighter flex items-center gap-2">
@@ -125,12 +137,23 @@ export default function StatisticsPage() {
           />
         </div>
 
-        <div className="hidden lg:block"></div> {/* Распорка */}
+        <div className="flex justify-center items-end gap-3">
+          <button 
+            onClick={() => setIsChartOpen(true)}
+            className="flex gap-2 text-slate-500 p-2.5 rounded-lg bg-slate-100 dark:bg-slate-950 shadow-sm border border-slate-200 dark:border-slate-800 hover:border-blue-500 transition-all"
+          >
+            <BarChart size={20} className="text-slate-600 dark:text-slate-400" /> <p>График</p>
+          </button>
+        </div>
+
+        {isChartOpen && <Graph symbol={selectedPair.replace('/', '')} onClose={() => setIsChartOpen(false)}/>}
+
+        {/* <div className="hidden lg:block"></div> Распорка */}
 
         <div className="flex items-end">
           <button 
             onClick={handleAnalyze}
-            disabled={isLoading}
+            disabled={isLoading || !startDate || !endDate}
             className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-all text-white font-bold py-2.5 rounded-lg flex items-center justify-center gap-2 shadow-lg shadow-blue-900/10 active:scale-95"
           >
             {isLoading ? <span className="animate-spin text-lg">◌</span> : <Play size={18} fill="currentColor" />}
@@ -165,6 +188,7 @@ export default function StatisticsPage() {
                 <th className="px-6 py-4 font-bold">Пара</th>
                 <th className="px-6 py-4 font-bold">Сигнал</th>
                 <th className="px-6 py-4 font-bold">Цена входа</th>
+                <th className="px-6 py-4 font-bold">RSI</th>
                 <th className="px-6 py-4 font-bold">Время входа</th>
                 <th className="px-6 py-4 font-bold">Цель</th>
                 <th className="px-6 py-4 font-bold">Время выхода</th>
@@ -187,6 +211,7 @@ export default function StatisticsPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-slate-500  font-mono">{row.entryPrice}</td>
+                    <td className="px-6 py-4 text-slate-500  font-mono">{row.rsi}</td>
                     <td className="px-6 py-4 text-slate-500  text-xs">{row.entryTime}</td>
                     <td className="px-6 py-4 text-slate-500  font-mono">{row.targetPrice}</td>
                     <td className="px-6 py-4 text-slate-500 text-xs">{row.resultTime || <span className="opacity-30">—</span>}</td>

@@ -161,6 +161,7 @@ export default function ProfessionalForexDashboard() {
                 <div className="flex xl:justify-between flex-wrap gap-2">
                   {allPairs.map(symbol => (
                     <button 
+                      disabled={symbol === 'CHF/JPY' || symbol === 'EUR/NZD'} // Пример блокировки пары
                       key={symbol}
                       onClick={() => togglePair(symbol)}
                       className={`px-3 py-2 rounded-xl text-[11px] font-bold border transition-all ${

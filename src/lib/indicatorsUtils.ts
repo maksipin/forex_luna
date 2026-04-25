@@ -104,10 +104,10 @@ const calculateSignal = (data: any): 'BUY' | 'SELL' | 'NEUTRAL' => {
   return 'NEUTRAL';
 };
 
-const formatCandleHour = (datetime: string): string => {
-  const date = new Date(new Date(datetime).toLocaleString("en-US", {timeZone: "Europe/Moscow"}));
-  return `${date.getHours()}H`;
-};
+// const formatCandleHour = (datetime: string): string => {
+//   const date = new Date(new Date(datetime).toLocaleString("en-US", {timeZone: "Europe/Moscow"}));
+//   return `${date.getHours()}H`;
+// };
 
 const calculateBollingerBands = (data: number[], period: number, stdDevMultiplier: number) => {
   const sma = calculateSMA(data, period);
@@ -128,6 +128,6 @@ const calculateBollingerBands = (data: number[], period: number, stdDevMultiplie
   return bands;
 };
 
-export { calculateSignal, formatCandleHour };
+export { calculateSignal };
 
 export { calculateSMA, calculateRSI, calculateATR, calculateEMA, calculateEntryPrice, calculateStopLoss };

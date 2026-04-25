@@ -4,8 +4,7 @@ import { sendSignalNotification } from "@/lib/telegram";
 import  twelvedata  from "twelvedata";
 import { DateTime } from 'luxon';
 import { SYMBOL_MAP } from "@/lib/forexUtils";
-import { rsi, RSI } from "technicalindicators";
-import { calculateRSI } from "@/lib/indicatorsUtils";
+import { calculateATR, calculateBollingerBands, calculateEMA, calculateRSI, findForexLevels } from "@/lib/indicatorsUtils";
 
 const config = {
   key: process.env.TWELVE_DATA_API_KEY,
@@ -24,13 +23,13 @@ interface MarketCheeseResponse {
   };
 }
 
-type MarketCheeseItem = {
+export type MarketCheeseItem = {
       date: number; // UNIX timestamp
       open: number;
       high: number;
       low: number;
       close: number;
-      volume?: number; // Не всегда приходит
+      volume: number; // Не всегда приходит
     }
 
 interface MarketCheeseCandle {
@@ -203,24 +202,27 @@ export async function analyzeMarketCheeseSignals(
 
     // 2. РАСЧЕТ RSI
     const closes = candles.map(c => c.close);
-    const rsiValues = RSI.calculate({
-      values: closes,
-      period: rsiPeriod
-    });
 
-    const rsiValuesTest = calculateRSI(closes, rsiPeriod);
-    console.log("RSI от technicalindicators:", rsiValues);
-    console.log("RSI от кастомной функции:", rsiValuesTest);
+    const rsiValues = calculateRSI(closes, rsiPeriod);
+    const emaValues = calculateEMA(closes, rsiPeriod);
+    const atrValues = calculateATR(candles, rsiPeriod);
+    const bollingerBands = calculateBollingerBands(closes, rsiPeriod, 2);
+    const levels = findForexLevels(rawData);
 
     // Сопоставляем RSI со свечами. 
     // technicalindicators возвращает массив короче на rsiPeriod элементов.
     // rsiValues[0] соответствует свече с индексом rsiPeriod в массиве candles.
     candles.forEach((candle, index) => {
       if (index >= rsiPeriod) {
-        // candle.rsi = parseFloat(rsiValues[index - rsiPeriod].toFixed(0));
-        candle.rsi = rsiValuesTest[index-1];
+        candle.rsi = rsiValues[index-1];
+        candle.ema = emaValues[index];
+        candle.atr = atrValues[index];
+        candle.bollingerBands = bollingerBands[index];
       } else {
         candle.rsi = null; // Данных для расчета еще недостаточно
+        candle.ema = null;
+        candle.atr = null;
+        candle.bollingerBands = null;
       }
     });
 
@@ -285,13 +287,16 @@ export async function analyzeMarketCheeseSignals(
             targetPrice: parseFloat(targetPrice.toFixed(5)),
             resultTime,
             candlesPassed,
-            rsi: c2.rsi // Теперь здесь актуальное значение RSI
+            rsi: c2.rsi, // Теперь здесь актуальное значение RSI
+            ema: c2.ema, // Теперь здесь актуальное значение EMA
+            atr: c2.atr,  // Теперь здесь актуальное значение ATR
+            bollingerBands: c2.bollingerBands  // Теперь здесь актуальное значение Bollinger Bands
           });
         }
       }
     }
 
-    return signals;
+    return {signals, levels};
   } catch (error) {
     console.error("MarketCheese API Error:", error);
     return [];

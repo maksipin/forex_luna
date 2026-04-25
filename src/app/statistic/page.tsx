@@ -11,15 +11,17 @@ import {
   X,
   Calendar as CalendarIcon,
   TrendingUp,
-  BarChart
+  BarChart,
+  Layers
 } from 'lucide-react';
-import { DateTime } from 'luxon';
 import { analyzeMarketCheeseSignals } from '../actions/forexActions';
 import { ALL_SYMBOLS } from '@/lib/forexUtils';
 import Graph from '@/components/Graph';
+import { LevelsModal } from '@/components/LevelsModal';
+
 
 // Типизация для сигналов
-interface TradeSignal {
+export interface TradeSignal {
   symbol: string;
   type: 'BUY' | 'SELL';
   entryPrice: number;
@@ -28,6 +30,13 @@ interface TradeSignal {
   resultTime: string | null;
   candlesPassed: number | null;
   rsi: number;
+  ema: number;
+  atr: number;
+  bollingerBands?: {
+    upper: number;
+    middle: number;
+    lower: number;
+  };
 }
 
 
@@ -48,6 +57,11 @@ export default function StatisticsPage() {
   const [isMounted, setIsMounted] = useState(false);
   const [isChartOpen, setIsChartOpen] = useState(false);
 
+  // Внутри компонента StatisticsPage:
+  const [isLevelsModalOpen, setIsLevelsModalOpen] = useState(false);
+  const [keyLevels, setKeyLevels] = useState<any[]>([]);
+  
+
   useEffect(() => {
     setIsMounted(true);
     // setStartDate(DateTime.now().minus({ days: 7 }).toFormat('yyyy-MM-dd HH:mm:ss'));
@@ -61,12 +75,35 @@ export default function StatisticsPage() {
   const handleAnalyze = async () => {
     setIsLoading(true);
 
-    const result = await analyzeMarketCheeseSignals(selectedPair, startDate, endDate, takeProfit) as unknown as TradeSignal[];
+    const { signals, levels } = await analyzeMarketCheeseSignals(selectedPair, startDate, endDate, takeProfit) as unknown as { signals: TradeSignal[], levels: any[] };
+     
 
     // const result = await analyzeMajorForexSignals(selectedPair, startDate, endDate, takeProfit) as unknown as TradeSignal[];
-    console.log('Результат анализа:', result);
-    setData(result); // Преобразуем результат в массив для отображения
+    console.log('Результат анализа:', signals, levels);
+    setData(signals); // Преобразуем результат в массив для отображения
+    setKeyLevels(levels); // Сохраняем ключевые уровни
     setIsLoading(false);
+  };
+
+    const getSignalRisk = (row: TradeSignal) => {
+    const risks = {
+      rsi: false,
+      bb: false,
+      total: false
+    };
+
+    if (row.type === 'SELL') {
+      if (row.rsi < 35) risks.rsi = true;
+      if (row.bollingerBands && row.entryPrice < row.bollingerBands.lower) risks.bb = true;
+    }
+
+    if (row.type === 'BUY') {
+      if (row.rsi > 65) risks.rsi = true;
+      if (row.bollingerBands && row.entryPrice > row.bollingerBands.upper) risks.bb = true;
+    }
+
+    risks.total = risks.rsi || risks.bb;
+    return risks;
   };
 
     const filteredData = data
@@ -144,6 +181,17 @@ export default function StatisticsPage() {
           >
             <BarChart size={20} className="text-slate-600 dark:text-slate-400" /> <p>График</p>
           </button>
+          <button 
+            disabled={keyLevels.length === 0}
+            onClick={() => {
+              setIsLevelsModalOpen(true);
+            }}
+            className="flex gap-2 text-slate-500 p-2.5 rounded-lg bg-slate-100 dark:bg-slate-950 shadow-sm border border-slate-200 dark:border-slate-800 hover:border-emerald-500 transition-all"
+          >
+            <Layers size={20} className="text-slate-600 dark:text-slate-400" />
+            <p className="hidden xl:block">Уровни</p>
+        </button>
+
         </div>
 
         {isChartOpen && <Graph symbol={selectedPair.replace('/', '')} onClose={() => setIsChartOpen(false)}/>}
@@ -189,6 +237,9 @@ export default function StatisticsPage() {
                 <th className="px-6 py-4 font-bold">Сигнал</th>
                 <th className="px-6 py-4 font-bold">Цена входа</th>
                 <th className="px-6 py-4 font-bold">RSI</th>
+                <th className="px-6 py-4 font-bold">EMA</th>
+                <th className="px-6 py-4 font-bold">ATR</th>
+                <th className="px-6 py-4 font-bold">Bollinger Bands</th>
                 <th className="px-6 py-4 font-bold">Время входа</th>
                 <th className="px-6 py-4 font-bold">Цель</th>
                 <th className="px-6 py-4 font-bold">Время выхода</th>
@@ -197,24 +248,64 @@ export default function StatisticsPage() {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {filteredData.length > 0 ? (
-                filteredData.map((row, idx) => (
+                filteredData.map((row, idx) => {
+                const risk = getSignalRisk(row);
+                
+                return (
                   <tr 
                     key={idx} 
                     onClick={() => setSelectedRow(row)}
-                    className="hover:bg-blue-500/[0.03] cursor-pointer transition-colors group"
+                    className={`hover:bg-blue-500/[0.03] cursor-pointer transition-colors group ${
+                      risk.total ? 'bg-amber-500/[0.02]' : ''
+                    }`}
                   >
                     <td className="px-6 py-4 font-bold text-slate-500">{row.symbol}</td>
-                    <td className="px-6 py-4">
-                      <span className={`flex items-center gap-2 font-semibold ${row.type === 'BUY' ? 'text-emerald-500' : 'text-rose-500'}`}>
-                        {row.type === 'BUY' ? <ArrowUpCircle size={16}/> : <ArrowDownCircle size={16}/>}
-                        {row.type}
-                      </span>
+                    
+                    {/* СИГНАЛ: Подсвечиваем ячейку, если есть риск */}
+                    <td className={`px-6 py-4 ${risk.total ? 'bg-amber-500/10' : ''}`}>
+                      <div className="flex flex-col">
+                        <span className={`flex items-center gap-2 font-black ${
+                          row.type === 'BUY' ? 'text-emerald-500' : 'text-rose-500'
+                        }`}>
+                          {row.type === 'BUY' ? <ArrowUpCircle size={16}/> : <ArrowDownCircle size={16}/>}
+                          {row.type}
+                        </span>
+                        {risk.total && (
+                          <span className="text-[9px] text-amber-600 font-bold uppercase mt-1 animate-pulse">
+                            ⚠️ Высокий риск
+                          </span>
+                        )}
+                      </div>
                     </td>
-                    <td className="px-6 py-4 text-slate-500  font-mono">{row.entryPrice}</td>
-                    <td className="px-6 py-4 text-slate-500  font-mono">{row.rsi}</td>
-                    <td className="px-6 py-4 text-slate-500  text-xs">{row.entryTime}</td>
-                    <td className="px-6 py-4 text-slate-500  font-mono">{row.targetPrice}</td>
-                    <td className="px-6 py-4 text-slate-500 text-xs">{row.resultTime || <span className="opacity-30">—</span>}</td>
+
+                    <td className="px-6 py-4 text-slate-500 font-mono">{row.entryPrice}</td>
+
+                    {/* RSI: Подсветка если значение критическое для входа */}
+                    <td className={`px-6 py-4 font-mono ${
+                      risk.rsi ? 'text-amber-500 bg-amber-500/5 font-bold' : 'text-slate-500'
+                    }`}>
+                      {row.rsi}
+                    </td>
+
+                    <td className="px-6 py-4 text-slate-500 font-mono">{row.ema}</td>
+                    <td className="px-6 py-4 text-slate-500 font-mono">{row.atr}</td>
+
+                    {/* Bollinger Bands: Подсветка если цена входа вне диапазона */}
+                    <td className={`px-6 py-4 font-mono text-xs ${
+                      risk.bb ? 'text-amber-500 bg-amber-500/5 font-bold' : 'text-slate-500'
+                    }`}>
+                      <div className="flex flex-col">
+                        <span>U: {row.bollingerBands?.upper.toFixed(5)}</span>
+                        <span className="opacity-50">M: {row.bollingerBands?.middle.toFixed(5)}</span>
+                        <span>L: {row.bollingerBands?.lower.toFixed(5)}</span>
+                      </div>
+                    </td>
+
+                    <td className="px-6 py-4 text-slate-500 text-xs">{row.entryTime}</td>
+                    <td className="px-6 py-4 text-slate-500 font-mono">{row.targetPrice}</td>
+                    <td className="px-6 py-4 text-slate-500 text-xs">
+                      {row.resultTime || <span className="opacity-30">—</span>}
+                    </td>
                     <td className="px-6 py-4">
                       {row.candlesPassed ? (
                         <span className="bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-1 rounded text-xs font-medium">
@@ -223,7 +314,8 @@ export default function StatisticsPage() {
                       ) : <span className="text-gray-700">—</span>}
                     </td>
                   </tr>
-                ))
+                );
+              })
               ) : (
                 <tr>
                   <td colSpan={7} className="px-6 py-12 text-center text-gray-600">
@@ -295,6 +387,12 @@ export default function StatisticsPage() {
           </div>
         </div>
       )}
+      <LevelsModal 
+        isOpen={isLevelsModalOpen}
+        onClose={() => setIsLevelsModalOpen(false)}
+        keyLevels={keyLevels}
+        selectedPair={selectedPair}
+      />
     </div>
   );
 }

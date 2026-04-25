@@ -189,7 +189,7 @@ export async function analyzeMarketCheeseSignals(
 
     // 1. Базовая обработка свечей
     const candles: any[] = rawData.map((c: any) => {
-      const dt = DateTime.fromSeconds(c.date);
+      const dt = DateTime.fromSeconds(c.date).setZone("Europe/Moscow");
       return {
         dt,
         dateStr: dt.toFormat('yyyy-MM-dd'),

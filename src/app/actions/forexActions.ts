@@ -5,6 +5,7 @@ import  twelvedata  from "twelvedata";
 import { DateTime } from 'luxon';
 import { SYMBOL_MAP } from "@/lib/forexUtils";
 import { rsi, RSI } from "technicalindicators";
+import { calculateRSI } from "@/lib/indicatorsUtils";
 
 const config = {
   key: process.env.TWELVE_DATA_API_KEY,
@@ -80,7 +81,7 @@ export async function fetchMarketCheeseComplexData(symbol: string, bot?: boolean
 
 
     // 1. Берем текущий момент времени
-const now = DateTime.now();
+const now = DateTime.now().setZone("Europe/Moscow");
 
 // 2. Устанавливаем начало дня (00:00:00) для выбранной даты
 const startDt = now.startOf('day');
@@ -146,7 +147,7 @@ const dateParam = now.toFormat('yyyyMMddHHmm');
       daily: dailyCandle,
       hourly: hourlyCandles,
     };
-    console.log(`MarketCheese сырые данные для ${symbol}:`, { result, hourly: result.hourly }); 
+    // console.log(`MarketCheese сырые данные для ${symbol}:`, { result, hourly: result.hourly }); 
     // ВЫЗОВ БОТА
     if (result.daily && result.hourly && bot) {
       // Функция sendSignalNotification должна уметь работать с этим форматом
@@ -169,8 +170,8 @@ export async function analyzeMarketCheeseSignals(
 ) {
   const symbolId = SYMBOL_MAP[symbolName] || 68;
   
-  const startDt = DateTime.fromISO(startDate);
-  const endDt = DateTime.fromISO(endDate).endOf('day');
+  const startDt = DateTime.fromISO(startDate).setZone("Europe/Moscow").startOf('day');
+  const endDt = DateTime.fromISO(endDate).setZone("Europe/Moscow").endOf('day');
   
   const hoursDiff = Math.ceil(endDt.diff(startDt, 'hours').hours);
   
@@ -209,12 +210,17 @@ export async function analyzeMarketCheeseSignals(
       period: rsiPeriod
     });
 
+    const rsiValuesTest = calculateRSI(closes, rsiPeriod);
+    console.log("RSI от technicalindicators:", rsiValues);
+    console.log("RSI от кастомной функции:", rsiValuesTest);
+
     // Сопоставляем RSI со свечами. 
     // technicalindicators возвращает массив короче на rsiPeriod элементов.
     // rsiValues[0] соответствует свече с индексом rsiPeriod в массиве candles.
     candles.forEach((candle, index) => {
       if (index >= rsiPeriod) {
-        candle.rsi = parseFloat(rsiValues[index - rsiPeriod].toFixed(0));
+        // candle.rsi = parseFloat(rsiValues[index - rsiPeriod].toFixed(0));
+        candle.rsi = rsiValuesTest[index-1];
       } else {
         candle.rsi = null; // Данных для расчета еще недостаточно
       }

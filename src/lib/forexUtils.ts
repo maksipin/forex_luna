@@ -1,4 +1,5 @@
 import { CombinedSymbolData } from "@/app/actions/forexActions";
+import { DateTime } from "luxon";
 
 export type Signal = 'BUY' | 'SELL' | 'NEUTRAL';
 
@@ -83,7 +84,8 @@ export function getCachedData(symbol: string): any | null {
 export const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
 export function formatCandleHour(datetime: string): string {
-  const date = new Date(new Date(datetime).toLocaleString("en-US", {timeZone: "Europe/Moscow"}));
+  // const date = new Date(new Date(datetime).toLocaleString("en-US", {timeZone: "Europe/Moscow"}));/
+  const date = DateTime.fromISO(datetime, { zone: 'utc' }).setZone('Europe/Moscow').toJSDate();
   return `${date.getHours()}H`;
 }
 

@@ -125,7 +125,7 @@ const dateParam = now.toFormat('yyyyMMddHHmm');
   
     const formatCandle = (c: any) => ({
       datetime: typeof c.date === 'number' 
-        ? DateTime.fromSeconds(c.date).toFormat('yyyy-MM-dd HH:mm:ss')
+        ? DateTime.fromSeconds(c.date).setZone("Europe/Moscow").toFormat('yyyy-MM-dd HH:mm:ss')
         : c.date,
       open: c.open.toString(),
       high: c.high.toString(),

@@ -1,7 +1,7 @@
 // src/app/api/cron/analyze-majors/route.ts
 import { NextResponse } from 'next/server';
 import { fetchMarketCheeseComplexData } from '@/app/actions/forexActions';
-import { ALL_SYMBOLS } from '@/lib/forexUtils';
+import { ALL_SYMBOLS } from '@/consts/consts';
 
 // Это предотвратит кэширование самого запроса к API роуту
 export const dynamic = 'force-dynamic';

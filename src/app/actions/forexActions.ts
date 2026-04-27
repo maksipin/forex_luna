@@ -3,8 +3,9 @@
 import { sendSignalNotification } from "@/lib/telegram";
 import  twelvedata  from "twelvedata";
 import { DateTime } from 'luxon';
-import { SYMBOL_MAP } from "@/lib/forexUtils";
-import { calculateATR, calculateBollingerBands, calculateEMA, calculateRSI, findForexLevels } from "@/lib/indicatorsUtils";
+import { SYMBOL_MAP } from "@/consts/consts";
+import { addIndicatorsToCandles, calculateATR, calculateBollingerBands, calculateEMA, calculateMACD, calculateRSI, findForexLevels, ForexLevel } from "@/lib/indicatorsUtils";
+import { searchLunaSignals } from "./searchSignals";
 
 const config = {
   key: process.env.TWELVE_DATA_API_KEY,
@@ -24,15 +25,15 @@ interface MarketCheeseResponse {
 }
 
 export type MarketCheeseItem = {
-      date: number; // UNIX timestamp
-      open: number;
-      high: number;
-      low: number;
-      close: number;
-      volume: number; // Не всегда приходит
-    }
+  date: number; // UNIX timestamp
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number; // Не всегда приходит
+}
 
-interface MarketCheeseCandle {
+export interface Candle {
   dt: DateTime;
   dateStr: string;
   fullTimeStr: string;
@@ -40,201 +41,148 @@ interface MarketCheeseCandle {
   high: number;
   low: number;
   close: number;
-  rsi: number
+  volume: number;
+  rsi: number;
+  ema20: number;
+  ema50: number;
+  ema200: number;
+  atr: number;
+  bollingerBands: { upper: number; middle: number; lower: number } | null;
+  macd: { macdLine: number | null; signalLine: number | null };
 }
-
-export type Candle = {
-  datetime: string;
-  open: string;
-  high: string;
-  low: string;
-  close: string;
-  volume: string;
-};
 
 export type CombinedSymbolData = {
   symbol: string;
-  daily: Candle | null;
-  hourly: Candle[] | null;
+  signal: 'BUY' | 'SELL' | 'NEUTRAL';
+  daily: Candle;
+  hourly: Candle[];
   error?: string;
+  levels?: ForexLevel[]
+  hasLevels?: ForexLevel
 };
 
-export async function fetchMarketCheeseComplexData(symbol: string, bot?: boolean): Promise<CombinedSymbolData> {
-  if (!symbol) return { symbol, daily: null, hourly: null, error: 'Символ не указан' };
+export async function fetchMarketCheeseComplexData(symbol: string, bot?: boolean): Promise<CombinedSymbolData | {symbol: string, error: string}> {
+  if (!symbol) return { symbol, error: 'Символ не указан' };
 
   try {
-    const symbolId = SYMBOL_MAP[symbol.toUpperCase()] || 68;
-    // const nowTimestamp = DateTime.now().toFormat('yyyyMMddHHmm');
-    // console.log(`Запрос данных MarketCheese для ${symbol} (ID: ${symbolId}) на ${nowTimestamp}`);
-
-    // // Формируем URL для дневных и часовых данных
-    // // Нам нужно 2 дневных (чтобы точно иметь одну закрытую) и 4 часовых
-    // const dailyUrl = `https://api.marketcheese.com/widgets/charts/quotes?symbol=${symbolId}&timeframe=D1&direction=-1&count=2&date=${nowTimestamp}`;
-    // const hourlyUrl = `https://api.marketcheese.com/widgets/charts/quotes?symbol=${symbolId}&timeframe=H1&direction=-1&count=4&date=${nowTimestamp}`;
-
-    // // Запрашиваем данные параллельно
-    // const [dailyResJ, hourlyResJ] = await Promise.all([
-    //   fetch(dailyUrl).then(res => res.json()) as Promise<MarketCheeseResponse>,
-    //   fetch(hourlyUrl).then(res => res.json()) as Promise<MarketCheeseResponse> 
-    // ]);
-
-
-    // 1. Берем текущий момент времени
-const now = DateTime.now().setZone("Europe/Moscow");
-
-// 2. Устанавливаем начало дня (00:00:00) для выбранной даты
-const startDt = now.startOf('day');
-
-// 3. Считаем разницу в часах между началом дня и "сейчас"
-// Используем Math.abs на всякий случай и ceil для округления вверх
-const hoursDiff = Math.ceil(now.diff(startDt, 'hours').hours);
-
-// 4. Формируем count. 
-// Добавляем +5 или +10 как "запас", чтобы точно захватить последнюю закрытую свечу
-const count = Math.min(hoursDiff -1 , 24); 
-
-// Параметр date для API (точка отсчета — сейчас)
-const dateParam = now.toFormat('yyyyMMddHHmm');
-
-    const hourlyUrl = `https://api.marketcheese.com/widgets/charts/quotes?symbol=${symbolId}&timeframe=H1&direction=-1&count=${count}&date=${dateParam}`;
-    const hourlyResJ = await fetch(hourlyUrl).then(res => res.json()) as MarketCheeseResponse;
-
-
-    const hourlyRes = hourlyResJ.data.items;
-    const dailyRes = hourlyRes.reduce((acc, curr, index) => {
-      if (index === 0) {
-        acc = {...curr};
-      } else {
-        acc = {
-          high: Math.max(acc.high, curr.high),
-          low: Math.min(acc.low, curr.low),
-          open: curr.open,
-          close: acc.close,
-          date: curr.date, // Дата дневной свечи будет датой первой часовой свечи
-          volume: acc.volume ? acc.volume + (curr.volume || 0) : curr.volume
-        }
-      }
-      return acc;
-    }, {} as MarketCheeseItem);
-
-    if (!Array.isArray(hourlyRes)) {
-      throw new Error('Некорректный ответ от MarketCheese API');
-    }
-
-  
-    const formatCandle = (c: any) => ({
-      datetime:  DateTime.fromSeconds(c.date).setZone("Europe/Moscow").toFormat('yyyy-MM-dd HH:mm:ss'),
-      open: c.open.toString(),
-      high: c.high.toString(),
-      low: c.low.toString(),
-      close: c.close.toString(),
-      volume: c.volume?.toString() ||  "0" // MarketCheese не всегда отдает объем в этом эндпоинте
-    });
-
-    // console.log(`MarketCheese сырые данные для ${symbol}:`, { now, startDt, hoursDiff, count, daily: dailyRes, hourly: hourlyRes }); 
-
-    
-    const dailyCandle = formatCandle(dailyRes);
-    
-    
-    const hourlyCandles = [formatCandle(hourlyRes[1]), formatCandle(hourlyRes[0])];
-
-    const result: CombinedSymbolData = {
-      symbol: symbol.toUpperCase(),
-      daily: dailyCandle,
-      hourly: hourlyCandles,
-    };
-    // console.log(`MarketCheese сырые данные для ${symbol}:`, { result, hourly: result.hourly }); 
-    // ВЫЗОВ БОТА
-    if (result.daily && result.hourly && bot) {
-      // Функция sendSignalNotification должна уметь работать с этим форматом
-      sendSignalNotification(result).catch(console.error);
-    }
+    const hourlyRes = await fetchMarketCheeseData(symbol);
+   
+    const candlesWithIndicators = addIndicatorsToCandles(hourlyRes);
+    //  console.log ('Candels', candlesWithIndicators.slice(candlesWithIndicators.length-20))
+    const result = searchLunaSignals(candlesWithIndicators, symbol)
 
     return result;
   } catch (error) {
     console.error(`Ошибка MarketCheese для ${symbol}:`, error);
-    return { symbol, daily: null, hourly: null, error: "MarketCheese API Error" };
+    return { symbol,  error: "MarketCheese API Error" };
   }
 }
+
+export async function fetchMarketCheeseData(symbolName: string, startDate?: string, endDate?: string): Promise<MarketCheeseItem[]> {
+  
+  const symbolId = SYMBOL_MAP[symbolName] || 68;
+
+  let url: string;
+
+  if (startDate && endDate) { 
+    const startDt = DateTime.fromISO(startDate).setZone("Europe/Moscow").startOf('day');
+    const endDt =  DateTime.fromISO(endDate).setZone("Europe/Moscow").endOf('day');
+    const hoursDiff = Math.ceil(endDt.diff(startDt, 'hours').hours);
+    const count = Math.max(hoursDiff + 200, 200); 
+    const dateParam = endDt.toFormat('yyyyMMddHHmm');
+
+    url = `https://api.marketcheese.com/widgets/charts/quotes?symbol=${symbolId}&timeframe=H1&direction=-1&count=${count}&date=${dateParam}`;
+  } else {
+    const now = DateTime.now().setZone("Europe/Moscow");
+    const startDt = now.startOf('day').minus({ days: 30 });
+    const count = Math.ceil(now.diff(startDt, 'hours').hours);
+    const dateParam = now.toFormat('yyyyMMddHHmm');
+
+    url = `https://api.marketcheese.com/widgets/charts/quotes?symbol=${symbolId}&timeframe=H1&direction=-1&count=${count}&date=${dateParam}`;
+  }
+
+  const hourlyResJ = await fetch(url).then(res => res.json()) as MarketCheeseResponse;
+
+  return hourlyResJ.data.items
+
+}
+  
 
 export async function analyzeMarketCheeseSignals(
   symbolName: string, 
   startDate: string, 
   endDate: string,   
-  takeProfitPoints: number = 150,
+  takeProfitPoints: number = 1,
   rsiPeriod: number = 14 // Добавили период RSI
 ) {
   const symbolId = SYMBOL_MAP[symbolName] || 68;
   
   const startDt = DateTime.fromISO(startDate).setZone("Europe/Moscow").startOf('day');
   const endDt = DateTime.fromISO(endDate).setZone("Europe/Moscow").endOf('day');
+
   
+  const levelStartDt = endDt.minus({ days: 60}); // Анализируем уровни за последние 90 дней
+
   const hoursDiff = Math.ceil(endDt.diff(startDt, 'hours').hours);
-  
+  const levelHoursDiff = Math.ceil(endDt.diff(levelStartDt, 'hours').hours);
+
+  console.log(`Часов в анализируемом периоде: ${hoursDiff}, часов для уровней: ${levelHoursDiff} ${levelStartDt}`);
+
   // ВАЖНО: Добавляем к count период RSI (например, 14) + запас (например, 50), 
   // чтобы индикатор успел стабилизироваться до начала анализируемого периода.
   const count = Math.max(hoursDiff + rsiPeriod, 200); 
   
   const dateParam = endDt.toFormat('yyyyMMddHHmm');
+  const levelDateParam = endDt.toFormat('yyyyMMddHHmm');
   const url = `https://api.marketcheese.com/widgets/charts/quotes?symbol=${symbolId}&timeframe=H1&direction=-1&count=${count}&date=${dateParam}`;
+  const levelUrl = `https://api.marketcheese.com/widgets/charts/quotes?symbol=${symbolId}&timeframe=H1&direction=-1&count=${levelHoursDiff}&date=${levelDateParam}`;
 
   try {
-    const response = await fetch(url);
+
+    const [response, levelDataResponse] = await Promise.all([
+      fetch(url),
+      fetch(levelUrl)
+    ]);
+
     const rawDataJson: MarketCheeseResponse = await response.json();
+    const levelDataJson: MarketCheeseResponse = await levelDataResponse.json(); 
     const rawData = rawDataJson.data.items;
+    const levelData = levelDataJson.data.items;
 
-    // 1. Базовая обработка свечей
-    const candles: any[] = rawData.map((c: any) => {
-      const dt = DateTime.fromSeconds(c.date).setZone("Europe/Moscow");
-      return {
-        dt,
-        dateStr: dt.toFormat('yyyy-MM-dd'),
-        fullTimeStr: dt.toFormat('yyyy-MM-dd HH:mm:ss'),
-        open: parseFloat(c.open),
-        high: parseFloat(c.high),
-        low: parseFloat(c.low),
-        close: parseFloat(c.close),
-      };
-    }).reverse();
+    if (!Array.isArray(rawData) || !Array.isArray(levelData)) {
+      throw new Error('Некорректный ответ от MarketCheese API');
+    }
 
-    if (candles.length < rsiPeriod) return [];
+    const candles = addIndicatorsToCandles(rawData);
+    const levels = findForexLevels(candles, 5, 30, 10);
 
-    // 2. РАСЧЕТ RSI
-    const closes = candles.map(c => c.close);
+    const findDayCandle = (dt: DateTime) => {
+      console.log(`Ищем дневную свечу для ${dt}`);
+      const dayStr = dt.toFormat('yyyy-MM-dd');
+      return candles.find(c => c.dateStr === dayStr);
+    };
+    const findHourlyCandle = (dt: DateTime) => {
+      const timeStr = dt.toFormat('yyyy-MM-dd HH:00:00');
+      return candles.find(c => c.fullTimeStr === timeStr);
+    };    
 
-    const rsiValues = calculateRSI(closes, rsiPeriod);
-    const emaValues = calculateEMA(closes, rsiPeriod);
-    const atrValues = calculateATR(candles, rsiPeriod);
-    const bollingerBands = calculateBollingerBands(closes, rsiPeriod, 2);
-    const levels = findForexLevels(rawData);
+    const  lunaSignals = searchLunaSignals(candles, symbolName);
+    console.log(`Найденные сигналы для ${symbolName}:`, lunaSignals);
 
-    // Сопоставляем RSI со свечами. 
-    // technicalindicators возвращает массив короче на rsiPeriod элементов.
-    // rsiValues[0] соответствует свече с индексом rsiPeriod в массиве candles.
-    candles.forEach((candle, index) => {
-      if (index >= rsiPeriod) {
-        candle.rsi = rsiValues[index-1];
-        candle.ema = emaValues[index];
-        candle.atr = atrValues[index];
-        candle.bollingerBands = bollingerBands[index];
-      } else {
-        candle.rsi = null; // Данных для расчета еще недостаточно
-        candle.ema = null;
-        candle.atr = null;
-        candle.bollingerBands = null;
-      }
-    });
+    const dayCandel = findDayCandle(DateTime.now().setZone("Europe/Moscow").minus({ days: 3 }).startOf('day'));
+    const hourlyCandel = findHourlyCandle(startDt);
 
     const signals = [];
     const POINT = symbolName.includes('JPY') || symbolName.includes('XAU') ? 0.01 : 0.00001;
-    const TARGET_DIFF = takeProfitPoints * POINT;
+
 
     const uniqueDays = Array.from(new Set(
       candles
         .filter(c => c.dt >= startDt && c.dt <= endDt && c.dt.weekday < 6)
         .map(c => c.dateStr)
     ));
+
+  
 
     for (const day of uniqueDays) {
       const dayCandles = candles.filter(c => c.dateStr === day);
@@ -252,6 +200,7 @@ export async function analyzeMarketCheeseSignals(
         const isDayBearish = c2.close < dayOpen;
         const areHourliesBullish = c1.close > c1.open && c2.close > c2.open;
         const areHourliesBearish = c1.close < c1.open && c2.close < c2.open;
+    
 
         let signalType: 'BUY' | 'SELL' | null = null;
         if (isDayBullish && areHourliesBullish) signalType = 'BUY';
@@ -259,7 +208,9 @@ export async function analyzeMarketCheeseSignals(
 
         if (signalType) {
           const entryPrice = c2.close;
+          const TARGET_DIFF = c2?.atr &&  (takeProfitPoints * c2.atr + 30 * POINT) || 0 ; // Цель — 1 ATR + небольшой запас
           const targetPrice = signalType === 'BUY' ? entryPrice + TARGET_DIFF : entryPrice - TARGET_DIFF;
+          
           
           let resultTime = null;
           let candlesPassed = null;
@@ -288,9 +239,12 @@ export async function analyzeMarketCheeseSignals(
             resultTime,
             candlesPassed,
             rsi: c2.rsi, // Теперь здесь актуальное значение RSI
-            ema: c2.ema, // Теперь здесь актуальное значение EMA
+            ema20: c2.ema20, // Теперь здесь актуальное значение EMA
+            ema50: c2.ema50, // Теперь здесь актуальное значение EMA
+            ema200: c2.ema200, // Теперь здесь актуальное значение EMA
             atr: c2.atr,  // Теперь здесь актуальное значение ATR
-            bollingerBands: c2.bollingerBands  // Теперь здесь актуальное значение Bollinger Bands
+            bollingerBands: c2.bollingerBands,  // Теперь здесь актуальное значение Bollinger Bands
+            macd: c2.macd  // Теперь здесь актуальное значение MACD
           });
         }
       }

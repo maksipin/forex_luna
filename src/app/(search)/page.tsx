@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { fetchMarketCheeseComplexData } from '@/app/actions/forexActions';
-import { calculateSignal, ALL_SYMBOLS } from '@/lib/forexUtils';
+import { CombinedSymbolData, fetchMarketCheeseComplexData } from '@/app/actions/forexActions';
 import { 
   Loader2, 
   TrendingUp, 
@@ -12,7 +11,8 @@ import SkeletonCard from '@/components/SkeletonCard';
 import FilterButton from '@/components/FilterButton';
 import ResultCard from '@/components/ResultCard';
 import dynamic  from 'next/dynamic';
-// import Graph from '@/components/Graph';
+import { ALL_SYMBOLS } from '@/consts/consts';
+
 
 
 const Graph = dynamic(() => import('@/components/Graph'), { 
@@ -27,7 +27,7 @@ export default function ProfessionalForexDashboard() {
   // Данные
   const [allPairs, setAllPairs] = useState<any[]>([]);
   const [selectedPairs, setSelectedPairs] = useState<string[]>([]);
-  const [results, setResults] = useState<any[]>([]);
+  const [results, setResults] = useState<CombinedSymbolData[]>([]);
 
   const [loadingSymbols, setLoadingSymbols] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -92,7 +92,7 @@ export default function ProfessionalForexDashboard() {
       
       if (!data.error) {
         // Помечаем данные как новые
-        const dataWithStatus = { ...data, isCached: false };
+        const dataWithStatus = { ...data as CombinedSymbolData};
         // setCachedData(symbol, data);
         
         const idx = updatedResults.findIndex(r => r.symbol === symbol);
@@ -119,10 +119,11 @@ export default function ProfessionalForexDashboard() {
   };
 
   const filteredResults = results.filter(data => {
-  const signal = calculateSignal(data);
-  if (filter === 'SIGNALS') return signal === 'BUY' || signal === 'SELL';
-  if (filter === 'NEUTRAL') return signal === 'NEUTRAL';
-  return true; // ALL
+    const signal = data.signal;
+  
+    if (filter === 'SIGNALS') return signal === 'BUY' || signal === 'SELL';
+    if (filter === 'NEUTRAL') return signal === 'NEUTRAL';
+    return true; // ALL
 });
 
   if (!isLoaded) {
@@ -209,7 +210,7 @@ export default function ProfessionalForexDashboard() {
                   active={filter === 'SIGNALS'} 
                   onClick={() => setFilter('SIGNALS')} 
                   label="Сигналы" 
-                  count={results.filter(r => calculateSignal(r) !== 'NEUTRAL').length}
+                  count={results.filter(r => r.signal !== 'NEUTRAL').length}
                   color="text-emerald-500"
                 />
                 <FilterButton 

@@ -12,12 +12,15 @@ import {
   Calendar as CalendarIcon,
   TrendingUp,
   BarChart,
-  Layers
+  Layers,
+  AlertTriangle
 } from 'lucide-react';
 import { analyzeMarketCheeseSignals } from '../actions/forexActions';
-import { ALL_SYMBOLS } from '@/lib/forexUtils';
+import { ALL_SYMBOLS } from '@/consts/consts';
 import Graph from '@/components/Graph';
 import { LevelsModal } from '@/components/LevelsModal';
+import { ForexLevel } from '@/lib/indicatorsUtils';
+import { macd } from 'technicalindicators';
 
 
 // Типизация для сигналов
@@ -30,12 +33,18 @@ export interface TradeSignal {
   resultTime: string | null;
   candlesPassed: number | null;
   rsi: number;
-  ema: number;
+  ema20: number;
+  ema50: number;
+  ema200: number;
   atr: number;
   bollingerBands?: {
     upper: number;
     middle: number;
     lower: number;
+  };
+  macd: { 
+    macdLine: number; 
+    signalLine: number 
   };
 }
 
@@ -45,7 +54,8 @@ export default function StatisticsPage() {
   // --- Состояния фильтров и параметров ---
   const [selectedPair, setSelectedPair] = useState(ALL_SYMBOLS[0]);
 
-  const [takeProfit, setTakeProfit] = useState(150);
+  const [takeProfit, setTakeProfit] = useState(1.0);
+  const [spread, setSpread] = useState(35);
   
   // --- Состояния данных и интерфейса ---
   const [isLoading, setIsLoading] = useState(false);
@@ -59,7 +69,7 @@ export default function StatisticsPage() {
 
   // Внутри компонента StatisticsPage:
   const [isLevelsModalOpen, setIsLevelsModalOpen] = useState(false);
-  const [keyLevels, setKeyLevels] = useState<any[]>([]);
+  const [keyLevels, setKeyLevels] = useState<ForexLevel[]>([]);
   
 
   useEffect(() => {
@@ -75,7 +85,7 @@ export default function StatisticsPage() {
   const handleAnalyze = async () => {
     setIsLoading(true);
 
-    const { signals, levels } = await analyzeMarketCheeseSignals(selectedPair, startDate, endDate, takeProfit) as unknown as { signals: TradeSignal[], levels: any[] };
+    const { signals, levels } = await analyzeMarketCheeseSignals(selectedPair, startDate, endDate, takeProfit) as unknown as { signals: TradeSignal[], levels: ForexLevel[] };
      
 
     // const result = await analyzeMajorForexSignals(selectedPair, startDate, endDate, takeProfit) as unknown as TradeSignal[];
@@ -85,26 +95,48 @@ export default function StatisticsPage() {
     setIsLoading(false);
   };
 
-    const getSignalRisk = (row: TradeSignal) => {
+    const getSignalRisk = (row: TradeSignal, prevRow: TradeSignal | undefined) => {
     const risks = {
       rsi: false,
       bb: false,
+      macd: false,
       total: false
     };
 
     if (row.type === 'SELL') {
       if (row.rsi < 35) risks.rsi = true;
       if (row.bollingerBands && row.entryPrice < row.bollingerBands.lower) risks.bb = true;
+      if (row.macd && (row.macd.macdLine > 0 || (prevRow?.macd?.macdLine || 0) < row.macd.macdLine )) risks.macd = true;
     }
 
     if (row.type === 'BUY') {
       if (row.rsi > 65) risks.rsi = true;
       if (row.bollingerBands && row.entryPrice > row.bollingerBands.upper) risks.bb = true;
+      if (row.macd && (row.macd.macdLine < 0 || (prevRow?.macd?.macdLine || 0) > row.macd.macdLine)) risks.macd = true;
     }
 
     risks.total = risks.rsi || risks.bb;
     return risks;
   };
+
+  const getLevelRisk = (row: TradeSignal, levels: ForexLevel[]) => {
+  if (!levels || levels.length === 0) return null;
+
+  // Ищем ближайший уровень, который стоит "на пути" у сделки
+  const obstacle = levels.find(lvl => {
+    console.log(`Проверка уровней для ${row.symbol} (${row.type}):`, {  entryPrice: row.entryPrice, targetPrice: row.targetPrice, levelPrice: lvl.price} )
+    if (row.type === 'BUY') {
+      // Для покупки риск — это сопротивление выше входа, но ниже или около цели
+      return lvl.price > row.entryPrice && lvl.price <= (row.targetPrice + 0.0002);
+    } else {
+      // Для продажи риск — это поддержка ниже входа, но выше или около цели
+      return lvl.price < row.entryPrice && lvl.price >= (row.targetPrice - 0.0002);
+    }
+  });
+
+
+  return obstacle || null;
+};
 
     const filteredData = data
 
@@ -131,7 +163,7 @@ export default function StatisticsPage() {
       </div>
 
       {/* --- ВЕРХНЯЯ ПАНЕЛЬ УПРАВЛЕНИЯ --- */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 p-5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl mb-6 shadow-lg shadow-blue-900/10">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-4 p-5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-xl mb-6 shadow-lg shadow-blue-900/10">
         
         <div>
           <label className="block text-[10px] text-gray-500 mb-2 uppercase tracking-[0.15em] font-bold">Инструмент</label>
@@ -164,15 +196,28 @@ export default function StatisticsPage() {
           />
         </div>
 
-        <div>
-          <label className="block text-[10px] text-gray-500 mb-2 uppercase tracking-[0.15em] font-bold">Take Profit (п)</label>
-          <input 
-            type="number" 
-            value={takeProfit}
-            onChange={(e) => setTakeProfit(Number(e.target.value))}
-            className="w-full bg-slate-100 dark:bg-slate-950 shadow-sm rounded-lg p-2.5 text-sm outline-none focus:border-blue-500 text-slate-500 transition-all"
-          />
-        </div>
+        {/* <div className="flex justify-center items-end gap-3"> */}
+          <div>
+            <label className="block text-[10px] text-gray-500 mb-2 uppercase tracking-[0.15em] font-bold">TP (n * ATR)</label>
+            <input 
+              type="number" 
+              step="0.1"
+              value={takeProfit}
+              onChange={(e) => setTakeProfit(Number(e.target.value))}
+              className="w-full bg-slate-100 dark:bg-slate-950 shadow-sm rounded-lg p-2.5 text-sm outline-none focus:border-blue-500 text-slate-500 transition-all"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[10px] text-gray-500 mb-2 uppercase tracking-[0.15em] font-bold">Spread</label>
+            <input 
+              type="number" 
+              value={spread}
+              onChange={(e) => setSpread(Number(e.target.value))}
+              className="w-full bg-slate-100 dark:bg-slate-950 shadow-sm rounded-lg p-2.5 text-sm outline-none focus:border-blue-500 text-slate-500 transition-all"
+            />
+          </div>
+        {/* </div> */}
 
         <div className="flex justify-center items-end gap-3">
           <button 
@@ -237,9 +282,11 @@ export default function StatisticsPage() {
                 <th className="px-6 py-4 font-bold">Сигнал</th>
                 <th className="px-6 py-4 font-bold">Цена входа</th>
                 <th className="px-6 py-4 font-bold">RSI</th>
+                <th className="px-6 py-4 font-bold">MACD</th>
                 <th className="px-6 py-4 font-bold">EMA</th>
                 <th className="px-6 py-4 font-bold">ATR</th>
                 <th className="px-6 py-4 font-bold">Bollinger Bands</th>
+                <th className="px-6 py-4 font-bold">Ближайший уровень</th>
                 <th className="px-6 py-4 font-bold">Время входа</th>
                 <th className="px-6 py-4 font-bold">Цель</th>
                 <th className="px-6 py-4 font-bold">Время выхода</th>
@@ -248,21 +295,21 @@ export default function StatisticsPage() {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {filteredData.length > 0 ? (
-                filteredData.map((row, idx) => {
-                const risk = getSignalRisk(row);
+                filteredData.map((row, idx, array) => {
+                const risk = getSignalRisk(row, array[idx - 1]);
+                const levelObstacle = getLevelRisk(row, keyLevels); // Находим препятствие
                 
                 return (
                   <tr 
                     key={idx} 
                     onClick={() => setSelectedRow(row)}
                     className={`hover:bg-blue-500/[0.03] cursor-pointer transition-colors group ${
-                      risk.total ? 'bg-amber-500/[0.02]' : ''
+                      risk.total || levelObstacle ? 'bg-amber-500/[0.02]' : ''
                     }`}
                   >
                     <td className="px-6 py-4 font-bold text-slate-500">{row.symbol}</td>
                     
-                    {/* СИГНАЛ: Подсвечиваем ячейку, если есть риск */}
-                    <td className={`px-6 py-4 ${risk.total ? 'bg-amber-500/10' : ''}`}>
+                    <td className={`px-6 py-4 ${risk.total || levelObstacle ? 'bg-amber-500/10' : ''}`}>
                       <div className="flex flex-col">
                         <span className={`flex items-center gap-2 font-black ${
                           row.type === 'BUY' ? 'text-emerald-500' : 'text-rose-500'
@@ -270,9 +317,9 @@ export default function StatisticsPage() {
                           {row.type === 'BUY' ? <ArrowUpCircle size={16}/> : <ArrowDownCircle size={16}/>}
                           {row.type}
                         </span>
-                        {risk.total && (
-                          <span className="text-[9px] text-amber-600 font-bold uppercase mt-1 animate-pulse">
-                            ⚠️ Высокий риск
+                        {(risk.total || levelObstacle) && (
+                          <span className="text-[9px] text-amber-600 font-bold uppercase mt-1 animate-pulse flex items-center gap-1">
+                            <AlertTriangle size={10} /> Внимание
                           </span>
                         )}
                       </div>
@@ -287,8 +334,15 @@ export default function StatisticsPage() {
                       {row.rsi}
                     </td>
 
-                    <td className="px-6 py-4 text-slate-500 font-mono">{row.ema}</td>
-                    <td className="px-6 py-4 text-slate-500 font-mono">{row.atr}</td>
+                     <td className={`px-6 py-4 font-mono text-xs ${risk.macd ? 'text-amber-500 bg-amber-500/5 font-bold' : 'text-slate-500'}`}>
+                      <div className="flex flex-col">
+                        <span>M: {row.macd.macdLine.toFixed(6)}</span>
+                        <span className="opacity-50">S: {row.macd.signalLine.toFixed(6)}</span>
+                      </div>
+                    </td>
+
+                    <td className="px-6 py-4 text-slate-500 font-mono">{row.ema20.toFixed(5)}</td>
+                    <td className="px-6 py-4 text-slate-500 font-mono">{row.atr.toFixed(5)}</td>
 
                     {/* Bollinger Bands: Подсветка если цена входа вне диапазона */}
                     <td className={`px-6 py-4 font-mono text-xs ${
@@ -301,8 +355,24 @@ export default function StatisticsPage() {
                       </div>
                     </td>
 
+                    {/* НОВАЯ ЯЧЕЙКА: Ближайший уровень */}
+                    <td className="px-6 py-4">
+                      {levelObstacle ? (
+                        <div className="flex flex-col">
+                          <span className="text-rose-400 font-mono font-bold text-xs flex items-center gap-1">
+                            {levelObstacle.price}
+                          </span>
+                          <span className="text-[9px] text-slate-500 uppercase">
+                            Риск отскока ({levelObstacle.touches} кас.)
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-emerald-500/40 text-xs italic">Путь чист</span>
+                      )}
+                    </td>
+
                     <td className="px-6 py-4 text-slate-500 text-xs">{row.entryTime}</td>
-                    <td className="px-6 py-4 text-slate-500 font-mono">{row.targetPrice}</td>
+                    <td className="px-6 py-4 text-slate-500 font-mono">price: {row.targetPrice}, pip: {(Math.abs(row.targetPrice - row.entryPrice) * 100000).toFixed(0)}</td>
                     <td className="px-6 py-4 text-slate-500 text-xs">
                       {row.resultTime || <span className="opacity-30">—</span>}
                     </td>

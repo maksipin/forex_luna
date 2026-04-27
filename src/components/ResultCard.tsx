@@ -1,13 +1,16 @@
-import { calculateSignal, formatCandleHour } from "@/lib/forexUtils";
+import { formatCandleHour } from "@/lib/forexUtils";
 import CandleWithLabel from "./CandleWithLabel";
+import { Candle, CombinedSymbolData } from "@/app/actions/forexActions";
 
-export default function ResultCard({ data, loadingSymbols }: { data: any; loadingSymbols: string[] }) {
-  const signal = calculateSignal(data);
+export default function ResultCard({ data, loadingSymbols }: { data: CombinedSymbolData; loadingSymbols: string[] }) {
+  const signal = data.signal
+  const {atr, rsi, bollingerBands, macd, ema20, ema50, ema200} = data.hourly[1]
+  const tp = atr < 0.01 ? (atr * 100000).toFixed(0) : (atr * 1000).toFixed(0)
   
   return (
     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] p-5 shadow-sm relative overflow-hidden">
       {/* Тонкая полоска-индикатор сверху */}
-      <div className={`absolute top-0 left-0 right-0 h-1 ${data.isCached ? 'bg-amber-400/50' : 'bg-blue-500'}`} />
+      <div className={`absolute top-0 left-0 right-0 h-1 'bg-blue-500'`} />
 
       <div className="flex justify-between items-center mb-8">
         <div className="flex flex-col">
@@ -15,8 +18,8 @@ export default function ResultCard({ data, loadingSymbols }: { data: any; loadin
             {data.symbol}
           </span>
           {/* Метка источника данных */}
-          <span className={`text-[9px] font-bold uppercase tracking-widest mt-1 ${data.isCached ? 'text-amber-600 dark:text-amber-500/70' : 'text-blue-600 dark:text-blue-400'}`}>
-            {loadingSymbols.includes(data.symbol) ? '● В очереди' : data.isCached ? '● Из кэша (20м)' : '● Обновлено сейчас'}
+          <span className={`text-[9px] font-bold uppercase tracking-widest mt-1 ${data.hasLevels ? 'text-amber-600 dark:text-amber-500/70' : 'text-blue-600 dark:text-blue-400'}`}>
+            {loadingSymbols.includes(data.symbol) ? '● В очереди' : data.hasLevels ?'● Риск отскока' : '● Обновлено сейчас'}
           </span>
         </div>
         
@@ -37,10 +40,10 @@ export default function ResultCard({ data, loadingSymbols }: { data: any; loadin
         
         {/* Часовые свечи с динамическими метками времени */}
         <div className="flex gap-2">
-          {data.hourly?.map((h: any, i: number) => (
+          {data.hourly?.map((h: Candle, i: number) => (
             <CandleWithLabel 
-              key={h.datetime}
-              label={formatCandleHour(h.datetime)} 
+              key={h.fullTimeStr}
+              label={formatCandleHour(h.fullTimeStr)} 
               data={h} 
             />
           ))}
@@ -48,9 +51,15 @@ export default function ResultCard({ data, loadingSymbols }: { data: any; loadin
       </div>
 
       {/* Маленькая подпись о свежести данных под графиком */}
-      <div className="mt-4 flex justify-end">
+      <div className="mt-4 flex justify-between">
         <span className="text-[8px] text-slate-400 uppercase tracking-widest font-bold">
-          Data cached & verified
+          TP: {tp}
+        </span>
+        <span className="text-[8px] text-slate-400 uppercase tracking-widest font-bold">
+          RSI: {rsi}
+        </span>
+         <span className="text-[8px] text-slate-400 uppercase tracking-widest font-bold">
+          EMA 20: {ema20.toFixed(5)}
         </span>
       </div>
     </div>

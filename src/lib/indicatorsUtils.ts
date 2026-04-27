@@ -1,5 +1,6 @@
-import { MarketCheeseItem } from "@/app/actions/forexActions";
+import { Candle, MarketCheeseItem } from "@/app/actions/forexActions";
 import { TradeSignal } from "@/app/statistic/page";
+import { DateTime } from "luxon";
 
 const calculateSMA = (data: number[], period: number) => {
   const sma: number[] = [];
@@ -41,7 +42,7 @@ const calculateRSI = (data: number[], period: number) => {
   return rsi;
 };
 
-const calculateATR = (data: MarketCheeseItem[], period: number) => {
+const calculateATR = (data: Candle[], period: number) => {
   const atr: number[] = [];
   for (let i = 0; i < data.length; i++) {
     if (i === 0) {
@@ -139,14 +140,8 @@ const calculateMACD = (data: number[], fastPeriod: number, slowPeriod: number, s
   return { macdLine, signalLine };
 }
 
-interface Candle {
-  high: number;
-  low: number;
-  close: number;
-  volume: number;
-}
 
-interface ForexLevel {
+export interface ForexLevel {
   price: number;
   touches: number;
   strength: number;
@@ -154,7 +149,7 @@ interface ForexLevel {
 }
 
 const findForexLevels = (
-  data: MarketCheeseItem[],
+  data: Candle[],
   digits: number = 5, // 5 для котировок типа 1.08542, 3 для USD/JPY типа 150.421
   minPipDistance: number = 20, // Минимальная дистанция между уровнями в пунктах
   strengthThreshold: number = 3 // Глубина поиска локального пика
@@ -215,6 +210,112 @@ const findForexLevels = (
     .sort((a, b) => b.strength - a.strength);
 }
 
-export { calculateSignal,  };
+
+interface ReversalSignal {
+  pattern: string;
+  type: 'BULLISH' | 'BEARISH';
+  reliability: 'HIGH' | 'MEDIUM';
+}
+
+function detectReversalPatterns(candles: Candle[]): ReversalSignal | null {
+  if (candles.length < 3) return null;
+
+  const current = candles[candles.length - 1];
+  const previous = candles[candles.length - 2];
+  
+  // 1. ПОИСК ПИН-БАРА (Pin Bar)
+  // Логика: длинная тень с одной стороны, маленькое тело с другой
+  const bodySize = Math.abs(current.close - current.open);
+  const candleRange = current.high - current.low;
+  const upperShadow = current.high - Math.max(current.open, current.close);
+  const lowerShadow = Math.min(current.open, current.close) - current.low;
+
+  // Бычий пин-бар (длинный хвост снизу)
+  if (lowerShadow > bodySize * 2 && upperShadow < lowerShadow / 2) {
+    return { pattern: 'Pin Bar', type: 'BULLISH', reliability: 'MEDIUM' };
+  }
+  // Медвежий пин-бар (длинный хвост сверху)
+  if (upperShadow > bodySize * 2 && lowerShadow < upperShadow / 2) {
+    return { pattern: 'Pin Bar', type: 'BEARISH', reliability: 'MEDIUM' };
+  }
+
+  // 2. ПОГЛОЩЕНИЕ (Engulfing)
+  // Логика: тело текущей свечи полностью перекрывает тело предыдущей
+  const prevBodySize = Math.abs(previous.close - previous.open);
+  
+  if (current.close > current.open && previous.close < previous.open) {
+    if (current.close > previous.open && current.open < previous.close) {
+      return { pattern: 'Engulfing', type: 'BULLISH', reliability: 'HIGH' };
+    }
+  }
+  if (current.close < current.open && previous.close > previous.open) {
+    if (current.close < previous.open && current.open > previous.close) {
+      return { pattern: 'Engulfing', type: 'BEARISH', reliability: 'HIGH' };
+    }
+  }
+
+  // 3. ДИВЕРГЕНЦИЯ RSI (Простейшая логика)
+  // Логика: Цена ставит новый экстремум, а RSI — нет
+  if (current.rsi && previous.rsi) {
+    const prePrevious = candles[candles.length - 3];
+    if (current.low < previous.low && current.rsi > previous.rsi) {
+      return { pattern: 'RSI Divergence', type: 'BULLISH', reliability: 'HIGH' };
+    }
+    if (current.high > previous.high && current.rsi < previous.rsi) {
+      return { pattern: 'RSI Divergence', type: 'BEARISH', reliability: 'HIGH' };
+    }
+  }
+
+  return null;
+}
+
+export const addIndicatorsToCandles = (candlesItems: MarketCheeseItem[]): Candle[] => {
+  const candles: Candle[] = candlesItems.map((c: any) => {
+        const dt = DateTime.fromSeconds(c.date).setZone("Europe/Moscow");
+        return {
+          dt,
+          dateStr: dt.toFormat('yyyy-MM-dd'),
+          fullTimeStr: dt.toFormat('yyyy-MM-dd HH:mm:ss'),
+          open: parseFloat(c.open),
+          high: parseFloat(c.high),
+          low: parseFloat(c.low),
+          close: parseFloat(c.close),
+          volume: c.volume || 0,
+          rsi: 0,
+          ema20: 0,
+          ema50: 0,
+          ema200: 0,
+          atr: 0,
+          bollingerBands: { upper: 0, middle: 0, lower: 0 },
+          macd: { macdLine: 0, signalLine: 0 }
+        };
+      }).reverse();
+      
+  const closes = candles.map(c => c.close);
+  const rsi = calculateRSI(closes, 14);
+  const ema20 = calculateEMA(closes, 20);
+  const ema50 = calculateEMA(closes, 50);
+  const ema200 = calculateEMA(closes, 200);
+  const atrValues = calculateATR(candles, 14);
+  const bollingerBands = calculateBollingerBands(closes, 14, 2);
+  const macd = calculateMACD(closes, 12, 26, 9);
+
+  candles.forEach((candle, index) => {
+    candle.rsi = rsi[index-1] || 0; // RSI начинается с 1-й свечи, поэтому смещаем индекс
+    candle.ema20 = ema20[index] || 0;
+    candle.ema50 = ema50[index] || 0;
+    candle.ema200 = ema200[index] || 0;
+    candle.atr = atrValues[index] || 0;
+    candle.bollingerBands = bollingerBands[index] || 0;
+    candle.macd = {
+      macdLine: macd.macdLine[index] || 0,
+      signalLine: macd.signalLine[index] || 0
+    };
+  });
+  return candles;
+}
+
+
+export { calculateSignal, detectReversalPatterns };
 
 export { calculateSMA, calculateRSI, calculateATR, calculateEMA, calculateEntryPrice, calculateStopLoss, calculateBollingerBands, calculateMACD, findForexLevels };

@@ -1,6 +1,6 @@
 // src/app/api/bot/route.ts
 import { Bot, webhookCallback } from "grammy";
-import { ALL_SYMBOLS } from "@/lib/forexUtils";
+import { ALL_SYMBOLS } from "@/consts/consts";
 import { fetchMarketCheeseComplexData } from "@/app/actions/forexActions";
 
 const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN || "");

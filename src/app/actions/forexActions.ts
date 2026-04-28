@@ -1,7 +1,7 @@
 'use server';
 
 // import { sendSignalNotification } from "@/lib/telegram";
-import  twelvedata  from "twelvedata";
+// import  twelvedata  from "twelvedata";
 import { DateTime } from 'luxon';
 import { SYMBOL_MAP } from "@/consts/consts";
 import { addIndicatorsToCandles, calculateATR, calculateBollingerBands, calculateEMA, calculateMACD, calculateRSI, findForexLevels, ForexLevel } from "@/lib/indicatorsUtils";
@@ -11,7 +11,7 @@ const config = {
   key: process.env.TWELVE_DATA_API_KEY,
 };
 
-const sdk = twelvedata(config);
+// const sdk = twelvedata(config);
 
 interface MarketCheeseResponse {
   status: "Success" | "Error";

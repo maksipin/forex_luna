@@ -54,10 +54,10 @@ export default function ResultCard({ data, loadingSymbols }: { data: CombinedSym
         <span className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">
           TP: {tp}
         </span>
-        <span className={`${(signal === 'BUY' && rsi > 70) || (signal === 'SELL' && rsi < 30) ? 'text-red-800' : 'text-green-700'} text-[10px]  uppercase tracking-widest font-bold`}>
+        <span className={`${(signal === 'BUY' && rsi > 70) || (signal === 'SELL' && rsi < 30) ? 'text-amber-600 dark:text-amber-500/70' : 'text-green-600'} text-[10px]  uppercase tracking-widest font-bold`}>
           RSI: {rsi}
         </span>
-         <span className={`${(signal === 'BUY' && ema20 > data.hourly[1].close) || (signal === 'SELL' && ema20 < data.hourly[1].close) ? 'text-red-800' : 'text-green-700'} text-[10px] uppercase tracking-widest font-bold`}>
+         <span className={`${(signal === 'BUY' && ema20 > data.hourly[1].close) || (signal === 'SELL' && ema20 < data.hourly[1].close) ? 'text-amber-600 dark:text-amber-500/70' : 'text-green-600'} text-[10px] uppercase tracking-widest font-bold`}>
           EMA 20: {ema20.toFixed(5)}
         </span>
       </div>

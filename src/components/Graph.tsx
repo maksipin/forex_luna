@@ -3,10 +3,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Settings, X } from 'lucide-react';
 import { useTheme } from 'next-themes';
+import { CombinedSymbolData } from '@/app/actions/forexActions';
+import { text } from 'stream/consumers';
 
-export default function Graph({symbol = 'EURUSD', onClose}: {symbol?: string, onClose?: () => void}) {
+export default function Graph({data, onClose}: {data: CombinedSymbolData, onClose?: () => void}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { theme } = useTheme();
+  const symbol = data.symbol.replace('/', '')
   const scriptId = `mc-script-graph-${symbol}`;
   const [isClient, setIsClient] = useState(false);
   
@@ -76,12 +79,18 @@ export default function Graph({symbol = 'EURUSD', onClose}: {symbol?: string, on
       <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
         <div className="bg-white dark:bg-slate-900 border border-gray-700 p-4 w-full max-w-6xl rounded-2xl shadow-2xl relative overflow-hidden">
            <div className="flex justify-between items-center mb-2">
-          <h2 className="text-xl font-black flex items-center gap-2 uppercase tracking-tighter">
-            <Settings className="text-blue-500" /> График
-          </h2>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
-            <X size={20} />
-          </button>
+            <h2 className="text-xl font-black flex items-center gap-2 uppercase tracking-tighter">
+              <Settings className="text-blue-500" /> График
+            </h2>
+            <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
+              <X size={20} />
+            </button>
+        </div>
+        <div className='flex justify-between'>
+          <p>Уровни:</p>
+          {data.levels?.sort((a, b) => a.price > b.price ? 1 : -1 ).map(i => (
+            <p className={`${i.price < data.hourly[1].close ? 'text-amber-600 dark:text-amber-500/70' : 'text-green-600'}`} key={i.price}>{i.price}({i.touches})</p>
+          ))}
         </div>
       
       {/* Основной контейнер виджета */}

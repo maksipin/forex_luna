@@ -32,7 +32,7 @@ export default function ProfessionalForexDashboard() {
   const [loadingSymbols, setLoadingSymbols] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const [isSettingsOpen, setIsSettingsOpen] = useState("");
+  const [isSettingsOpen, setIsSettingsOpen] = useState<CombinedSymbolData | null>(null);
 
   const [filter, setFilter] = useState<'ALL' | 'SIGNALS' | 'NEUTRAL'>('ALL');
 
@@ -223,7 +223,7 @@ export default function ProfessionalForexDashboard() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {filteredResults.map((data) => (
-                <button key={data.symbol} onClick={() => setIsSettingsOpen(data.symbol.replace('/', ''))} className="w-full cursor-pointer">
+                <button key={data.symbol} onClick={() => setIsSettingsOpen(data)} className="w-full cursor-pointer">
                 <ResultCard key={data.symbol} data={data} loadingSymbols={loadingSymbols} />
                 </button>
               ))}
@@ -245,7 +245,7 @@ export default function ProfessionalForexDashboard() {
             </div>
           </section>
         </div>
-        {isSettingsOpen && <Graph symbol={isSettingsOpen} onClose={() => setIsSettingsOpen('')} />}
+        {isSettingsOpen && <Graph data={isSettingsOpen} onClose={() => setIsSettingsOpen(null)} />}
       </div>
     </main>
   );

@@ -65,7 +65,7 @@ export default function StatisticsPage() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [isMounted, setIsMounted] = useState(false);
-  const [isChartOpen, setIsChartOpen] = useState(false);
+  const [isChartOpen, setIsChartOpen] = useState<TradeSignal | false>(false);
 
   // Внутри компонента StatisticsPage:
   const [isLevelsModalOpen, setIsLevelsModalOpen] = useState(false);
@@ -143,12 +143,12 @@ export default function StatisticsPage() {
   return (
     <div className="relative space-y-6 mx-auto p-8 bg-slate-50 dark:bg-[#0b0e14]">
         <div className="fixed bottom-10 right-14 flex justify-center items-end gap-3">
-          <button 
+          {/* <button 
             onClick={() => setIsChartOpen(true)}
             className="text-slate-500 p-2.5 rounded-lg bg-slate-100 dark:bg-slate-950 shadow-sm border border-slate-200 dark:border-slate-800 hover:border-blue-500 transition-all"
           >
             <BarChart size={20} className="text-slate-600 dark:text-slate-400" />
-          </button>
+          </button> */}
         </div>
       <div className="flex justify-between items-center">
         <div>
@@ -220,12 +220,12 @@ export default function StatisticsPage() {
         {/* </div> */}
 
         <div className="flex justify-center items-end gap-3">
-          <button 
-            onClick={() => setIsChartOpen(true)}
+          {/* <button 
+            onClick={() => setIsChartOpen(row)}
             className="flex gap-2 text-slate-500 p-2.5 rounded-lg bg-slate-100 dark:bg-slate-950 shadow-sm border border-slate-200 dark:border-slate-800 hover:border-blue-500 transition-all"
           >
             <BarChart size={20} className="text-slate-600 dark:text-slate-400" /> <p>График</p>
-          </button>
+          </button> */}
           <button 
             disabled={keyLevels.length === 0}
             onClick={() => {
@@ -239,7 +239,7 @@ export default function StatisticsPage() {
 
         </div>
 
-        {isChartOpen && <Graph symbol={selectedPair.replace('/', '')} onClose={() => setIsChartOpen(false)}/>}
+        {isChartOpen && <Graph symbol={selectedPair.replace('/', '')} levels={keyLevels} price={isChartOpen.entryPrice} onClose={() => setIsChartOpen(false)}/>}
 
         {/* <div className="hidden lg:block"></div> Распорка */}
 

@@ -3,13 +3,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Settings, X } from 'lucide-react';
 import { useTheme } from 'next-themes';
-import { CombinedSymbolData } from '@/app/actions/forexActions';
-import { text } from 'stream/consumers';
+import { ForexLevel } from '@/lib/indicatorsUtils';
 
-export default function Graph({data, onClose}: {data: CombinedSymbolData, onClose?: () => void}) {
+export default function Graph({symbol, levels, price, onClose}: {symbol: string, levels: ForexLevel[] | undefined, price: number, onClose?: () => void}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { theme } = useTheme();
-  const symbol = data.symbol.replace('/', '')
   const scriptId = `mc-script-graph-${symbol}`;
   const [isClient, setIsClient] = useState(false);
   
@@ -88,8 +86,8 @@ export default function Graph({data, onClose}: {data: CombinedSymbolData, onClos
         </div>
         <div className='flex justify-between'>
           <p>Уровни:</p>
-          {data.levels?.sort((a, b) => a.price > b.price ? 1 : -1 ).map(i => (
-            <p className={`${i.price < data.hourly[1].close ? 'text-amber-600 dark:text-amber-500/70' : 'text-green-600'}`} key={i.price}>{i.price}({i.touches})</p>
+          {levels?.sort((a, b) => a.price > b.price ? 1 : -1 ).map(i => (
+            <p className={`${i.price < price ? 'text-amber-600 dark:text-amber-500/70' : 'text-green-600'}`} key={i.price}>{i.price}({i.touches})</p>
           ))}
         </div>
       

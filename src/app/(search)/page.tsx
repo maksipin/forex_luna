@@ -245,7 +245,7 @@ export default function ProfessionalForexDashboard() {
             </div>
           </section>
         </div>
-        {isSettingsOpen && <Graph data={isSettingsOpen} onClose={() => setIsSettingsOpen(null)} />}
+        {isSettingsOpen && <Graph symbol={isSettingsOpen.symbol} levels={isSettingsOpen.levels} price={isSettingsOpen.hourly[1].close} onClose={() => setIsSettingsOpen(null)} />}
       </div>
     </main>
   );

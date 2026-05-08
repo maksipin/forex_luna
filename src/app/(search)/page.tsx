@@ -224,7 +224,7 @@ export default function ProfessionalForexDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {filteredResults.map((data) => (
                 <button key={data.symbol} onClick={() => setIsSettingsOpen(data)} className="w-full cursor-pointer">
-                <ResultCard key={data.symbol} data={data} loadingSymbols={loadingSymbols} />
+                 <ResultCard key={data.symbol} data={data} loadingSymbols={loadingSymbols} />
                 </button>
               ))}
               

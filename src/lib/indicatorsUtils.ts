@@ -15,6 +15,31 @@ const calculateSMA = (data: number[], period: number) => {
   return sma;
 };
 
+const calculateStochastic = (data: Candle[], period: number) => {
+  const k: number[] = [];
+  for (let i = 0; i < data.length; i++) {
+    if (i < period - 1) {
+      k.push(0);
+    } else {
+      let lowestLow = Infinity;
+      let highestHigh = -Infinity;
+      for (let j = i - period + 1; j <= i; j++) {
+        lowestLow = Math.min(lowestLow, data[j].low);
+        highestHigh = Math.max(highestHigh, data[j].high);
+      }
+      const currentClose = data[i].close;
+      if (highestHigh === lowestLow) {
+        k.push(50);
+      } else {
+        const kValue = 100 * (currentClose - lowestLow) / (highestHigh - lowestLow);
+        k.push(kValue);
+      }
+    }
+  }
+  const d = calculateSMA(k, 3);
+  return { k, d };
+};
+
 const calculateRSI = (data: number[], period: number) => {
   const rsi: number[] = [];
   let gains = 0;

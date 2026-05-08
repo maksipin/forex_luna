@@ -7,8 +7,9 @@ import { ForexLevel } from '@/lib/indicatorsUtils';
 
 export default function Graph({symbol, levels, price, onClose}: {symbol: string, levels: ForexLevel[] | undefined, price: number, onClose?: () => void}) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const symbolFormatted = symbol?.replace('/', '')
   const { theme } = useTheme();
-  const scriptId = `mc-script-graph-${symbol}`;
+  const scriptId = `mc-script-graph-${symbolFormatted}`;
   const [isClient, setIsClient] = useState(false);
   
     useEffect(() => {
@@ -42,7 +43,7 @@ export default function Graph({symbol, levels, price, onClose}: {symbol: string,
       colorScheme:theme,
       symbolsEnabled:true,
       showTools:true,
-      symbol: symbol,
+      symbol: symbolFormatted,
       language: "ru",
       timezone: "current",
       upload: "manual"

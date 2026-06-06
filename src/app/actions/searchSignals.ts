@@ -24,15 +24,10 @@ export const searchLunaSignals =  (candles: Candle[], symbol: string) => {
 
     const hourlyCandles = candlesPerDay.slice(candlesPerDay.length - 2);
 
-    const dailyGreen = dailyCandle.close > dailyCandle.open;
-    const dailyRed = dailyCandle.close < dailyCandle.open;
-    
-    const allHourlyGreen = hourlyCandles.every(h => h.close > h.open);
-    const allHourlyRed = hourlyCandles.every(h => h.close < h.open);
-    let signal: 'BUY' | 'SELL' | 'NEUTRAL' = 'NEUTRAL';
-    if (dailyGreen && allHourlyGreen) signal = 'BUY';
-    if (dailyRed && allHourlyRed) signal = 'SELL';
+    console.log(`Анализируем сигналы для ${symbol} на основе дневной свечи и последних 2 часовых свечей:`, {candles, candlesPerDay, hourlyCandles});
 
+    const signal = checkLunaPattern(hourlyCandles, dailyCandle);
+   
     const levels = findForexLevels(candles, 5, 30, 10)
 
     // const hasLevels = levels.find(l => hourlyCandles[1].close + hourlyCandles[1].atr > l.price && hourlyCandles[1].close - hourlyCandles[1].atr < l.price)
@@ -48,4 +43,17 @@ export const searchLunaSignals =  (candles: Candle[], symbol: string) => {
         levels,
         hasLevels
     }
-};      
+};    
+
+const checkLunaPattern = (hourlyCandles: Candle[], dailyCandle: Candle): 'BUY' | 'SELL' | 'NEUTRAL' => {
+  
+    const dailyGreen = dailyCandle.close > dailyCandle.open;
+    const dailyRed = dailyCandle.close < dailyCandle.open;
+    
+    const allHourlyGreen = hourlyCandles.every(h => h.close > h.open);
+    const allHourlyRed = hourlyCandles.every(h => h.close < h.open);
+    let signal: 'BUY' | 'SELL' | 'NEUTRAL' = 'NEUTRAL';
+    if (dailyGreen && allHourlyGreen) signal = 'BUY';
+    if (dailyRed && allHourlyRed) signal = 'SELL';
+    return signal;
+}

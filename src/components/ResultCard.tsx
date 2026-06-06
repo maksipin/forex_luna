@@ -13,7 +13,7 @@ export default function ResultCard({ data, loadingSymbols }: { data: CombinedSym
       <div className={`absolute top-0 left-0 right-0 h-1 'bg-blue-500'`} />
 
       <div className="flex justify-between items-center mb-8">
-        <div className="flex flex-col">
+        <div className="flex flex-col items-start">
           <span className="text-2xl font-black font-mono tracking-tighter text-slate-800 dark:text-white">
             {data.symbol}
           </span>
@@ -21,6 +21,17 @@ export default function ResultCard({ data, loadingSymbols }: { data: CombinedSym
           <span className={`text-[9px] font-bold uppercase tracking-widest mt-1 ${data.hasLevels ? 'text-amber-600 dark:text-amber-500/70' : 'text-blue-600 dark:text-blue-400'}`}>
             {loadingSymbols.includes(data.symbol) ? '● В очереди' : data.hasLevels ?'● Риск отскока' : '● Обновлено сейчас'}
           </span>
+          {data.hourly[data.hourly.length - 1]?.reversalSignal && (<>
+            <span className="text-amber-600 dark:text-amber-500/70 text-[8px] font-bold uppercase tracking-widest mt-1">
+              Обнаружен {data.hourly[data.hourly.length - 1].reversalSignal?.pattern}
+            </span>
+            <span className="text-amber-600 dark:text-amber-500/70 text-[8px] font-bold uppercase tracking-widest mt-1">
+              надежность: {data.hourly[data.hourly.length - 1].reversalSignal?.reliability}, тип: {data.hourly[data.hourly.length - 1].reversalSignal?.type}
+            </span>
+            {/* <span className="text-amber-600 dark:text-amber-500/70 text-[8px] font-bold uppercase tracking-widest mt-1">
+            тип: 
+            </span> */}
+          </>)}
         </div>
         
         <div className={`px-4 py-1.5 rounded-full text-[10px] font-black tracking-[0.1em] shadow-sm ${

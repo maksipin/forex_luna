@@ -65,7 +65,7 @@ export default function StatisticsPage() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [isMounted, setIsMounted] = useState(false);
-  const [isChartOpen, setIsChartOpen] = useState<TradeSignal | false>(false);
+  const [isChartOpen, setIsChartOpen] = useState<string | false>(false);
 
   // Внутри компонента StatisticsPage:
   const [isLevelsModalOpen, setIsLevelsModalOpen] = useState(false);
@@ -158,7 +158,7 @@ export default function StatisticsPage() {
             <p className="text-right text-slate-500 text-sm font-medium">Анализ статистики</p>
           </div>
         <div className="text-sm text-gray-500">
-          Найдено сигналов: <span className="text-blue-400">{filteredData.length}</span>
+          Найдено сигналов: <span className="text-blue-400">{filteredData?.length}</span>
         </div>
       </div>
 
@@ -220,12 +220,12 @@ export default function StatisticsPage() {
         {/* </div> */}
 
         <div className="flex justify-center items-end gap-3">
-          {/* <button 
-            onClick={() => setIsChartOpen(row)}
+          <button 
+            onClick={() => setIsChartOpen(selectedPair)}
             className="flex gap-2 text-slate-500 p-2.5 rounded-lg bg-slate-100 dark:bg-slate-950 shadow-sm border border-slate-200 dark:border-slate-800 hover:border-blue-500 transition-all"
           >
             <BarChart size={20} className="text-slate-600 dark:text-slate-400" /> <p>График</p>
-          </button> */}
+          </button>
           <button 
             disabled={keyLevels.length === 0}
             onClick={() => {
@@ -239,7 +239,7 @@ export default function StatisticsPage() {
 
         </div>
 
-        {isChartOpen && <Graph symbol={selectedPair.replace('/', '')} levels={keyLevels} price={isChartOpen.entryPrice} onClose={() => setIsChartOpen(false)}/>}
+        {isChartOpen && <Graph symbol={selectedPair.replace('/', '')} levels={keyLevels} price={0} onClose={() => setIsChartOpen(false)}/>}
 
         {/* <div className="hidden lg:block"></div> Распорка */}
 

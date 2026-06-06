@@ -5,7 +5,7 @@ import { Settings, X } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { ForexLevel } from '@/lib/indicatorsUtils';
 
-export default function Graph({symbol, levels, price, onClose}: {symbol: string, levels: ForexLevel[] | undefined, price: number, onClose?: () => void}) {
+export default function Graph({symbol, levels, price = 0, onClose}: {symbol: string, levels: ForexLevel[] | undefined, price: number, onClose?: () => void}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const symbolFormatted = symbol?.replace('/', '')
   const { theme } = useTheme();
@@ -87,7 +87,7 @@ export default function Graph({symbol, levels, price, onClose}: {symbol: string,
         </div>
         <div className='flex justify-between'>
           <p>Уровни:</p>
-          {levels?.sort((a, b) => a.price > b.price ? 1 : -1 ).map(i => (
+          {price && levels?.sort((a, b) => a.price > b.price ? 1 : -1 ).map(i => (
             <p className={`${i.price < price ? 'text-amber-600 dark:text-amber-500/70' : 'text-green-600'}`} key={i.price}>{i.price}({i.touches})</p>
           ))}
         </div>

@@ -15,7 +15,7 @@ const calculateSMA = (data: number[], period: number) => {
   return sma;
 };
 
-const calculateStochastic = (data: Candle[], period: number) => {
+const calculateStochastic = (data: Candle[], period: number, dI: number = 3) => {
   const k: number[] = [];
   for (let i = 0; i < data.length; i++) {
     if (i < period - 1) {
@@ -36,9 +36,118 @@ const calculateStochastic = (data: Candle[], period: number) => {
       }
     }
   }
-  const d = calculateSMA(k, 3);
+  const d = calculateSMA(k, dI);
   return { k, d };
 };
+
+
+interface VolumeBin {
+  priceStart: number;
+  priceEnd: number;
+  volume: number;
+  isPOC: boolean; // Точка контроля (максимальный объем)
+}
+
+interface VRVPResult {
+  bins: VolumeBin[];
+  pocPrice: number;
+  valueArea: {
+    high: number;
+    low: number;
+  };
+}
+
+/**
+ * Функция расчета видимого профиля объема
+ * @param candles - массив свечей видимой области
+ * @param rowCount - количество уровней (строк) профиля
+ */
+function calculateVRVP(candles: Candle[], rowCount: number = 24): VRVPResult {
+  if (candles.length === 0) return { bins: [], pocPrice: 0, valueArea: { high: 0, low: 0 } };
+
+  // 1. Находим экстремумы видимого диапазона
+  const prices = candles.flatMap(c => [c.high, c.low]);
+  const minPrice = Math.min(...prices);
+  const maxPrice = Math.max(...prices);
+  const priceRange = maxPrice - minPrice;
+  const binWidth = priceRange / rowCount;
+
+  // 2. Инициализируем корзины (bins)
+  const bins: VolumeBin[] = Array.from({ length: rowCount }, (_, i) => ({
+    priceStart: minPrice + i * binWidth,
+    priceEnd: minPrice + (i + 1) * binWidth,
+    volume: 0,
+    isPOC: false,
+  }));
+
+  // 3. Распределяем объем каждой свечи по бинам
+  candles.forEach(candle => {
+    // Находим индексы бинов, которые пересекает свеча (от low до high)
+    const startIdx = Math.floor((candle.low - minPrice) / binWidth);
+    const endIdx = Math.floor((candle.high - minPrice) / binWidth);
+
+    // Важно: ограничиваем индексы в пределах массива
+    const safeStart = Math.max(0, startIdx);
+    const safeEnd = Math.min(rowCount - 1, endIdx);
+
+    // Считаем, сколько бинов охватывает свеча
+    const coveredBins = safeEnd - safeStart + 1;
+    
+    // Распределяем объем свечи равномерно между всеми затронутыми бинами
+    // (Это стандартный подход для простых профилей)
+    const volumePerBin = candle.volume / coveredBins;
+
+    for (let i = safeStart; i <= safeEnd; i++) {
+      bins[i].volume += volumePerBin;
+    }
+  });
+
+  // 4. Находим POC (Point of Control)
+  let maxVol = 0;
+  let pocIdx = 0;
+  bins.forEach((bin, idx) => {
+    if (bin.volume > maxVol) {
+      maxVol = bin.volume;
+      pocIdx = idx;
+    }
+  });
+  bins[pocIdx].isPOC = true;
+
+  // 5. Расчет Value Area (VA) - зона 70% объема (упрощенно)
+  const totalVolume = bins.reduce((acc, b) => acc + b.volume, 0);
+  const targetVA = totalVolume * 0.7;
+  
+  let currentVAVolume = bins[pocIdx].volume;
+  let upIdx = pocIdx;
+  let downIdx = pocIdx;
+
+  // Расширяем зону от POC вверх и вниз, пока не наберем 70%
+  while (currentVAVolume < targetVA && (upIdx < rowCount - 1 || downIdx > 0)) {
+    const volUp = upIdx < rowCount - 1 ? bins[upIdx + 1].volume : 0;
+    const volDown = downIdx > 0 ? bins[downIdx - 1].volume : 0;
+
+    if (volUp >= volDown && upIdx < rowCount - 1) {
+      upIdx++;
+      currentVAVolume += volUp;
+    } else if (downIdx > 0) {
+      downIdx--;
+      currentVAVolume += volDown;
+    } else {
+      break; 
+    }
+  }
+
+  return {
+    bins,
+    pocPrice: bins[pocIdx].priceStart + binWidth / 2,
+    valueArea: {
+      high: bins[upIdx].priceEnd,
+      low: bins[downIdx].priceStart,
+    }
+  };
+}
+
+
 
 const calculateRSI = (data: number[], period: number) => {
   const rsi: number[] = [];
@@ -56,7 +165,7 @@ const calculateRSI = (data: number[], period: number) => {
       const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
       rsi.push(Math.round(100 - (100 / (1 + rs))));
 
-      // Убираем влияние самой старой свечи
+      // Убираем влияние самой старо�� свечи
       const oldChange = data[i - period + 1] - data[i - period];
       if (oldChange > 0) gains -= oldChange;
       else losses += oldChange;
@@ -236,7 +345,7 @@ const findForexLevels = (
 }
 
 
-interface ReversalSignal {
+export interface ReversalSignal {
   pattern: string;
   type: 'BULLISH' | 'BEARISH';
   reliability: 'HIGH' | 'MEDIUM';
@@ -294,6 +403,52 @@ function detectReversalPatterns(candles: Candle[]): ReversalSignal | null {
   return null;
 }
 
+export interface PivotPoints {
+  pp: number;    // Pivot Point
+  r1: number;    // Resistance 1
+  r2: number;    // Resistance 2
+  r3: number;    // Resistance 3
+  s1: number;    // Support 1
+  s2: number;    // Support 2
+  s3: number;    // Support 3
+}
+
+/**
+ * Calculate pivot points and support/resistance levels based on previous period data
+ * @param high Previous period high price
+ * @param low Previous period low price
+ * @param close Previous period close price
+ * @returns Object containing pivot point, resistance and support levels
+ */
+const calculatePivotPoints = (candels: Candle[]): PivotPoints[] => {
+  const stochastic = candels.map(c => {
+    const { high, low, close } = c;
+    // Calculate the main pivot point
+    const pp = (high + low + close) / 3;
+    
+    // Calculate resistance levels
+    const r1 = (2 * pp) - low;
+    const r2 = pp + (high - low);
+    const r3 = high + 2 * (pp - low);
+    
+    // Calculate support levels
+    const s1 = (2 * pp) - high;
+    const s2 = pp - (high - low);
+    const s3 = low - 2 * (high - pp);
+    
+    return {
+      pp,
+      r1,
+      r2,
+      r3,
+      s1,
+      s2,
+      s3
+    };
+  });
+  return stochastic;
+};
+
 export const addIndicatorsToCandles = (candlesItems: MarketCheeseItem[]): Candle[] => {
   const candles: Candle[] = candlesItems.map((c: any) => {
         const dt = DateTime.fromSeconds(c.date).setZone("Europe/Moscow");
@@ -307,26 +462,35 @@ export const addIndicatorsToCandles = (candlesItems: MarketCheeseItem[]): Candle
           close: parseFloat(c.close),
           volume: c.volume || 0,
           rsi: 0,
+          stoch: { k: 0, d: 0 },
           ema20: 0,
           ema50: 0,
           ema200: 0,
           atr: 0,
           bollingerBands: { upper: 0, middle: 0, lower: 0 },
-          macd: { macdLine: 0, signalLine: 0 }
+          macd: { macdLine: 0, signalLine: 0 },
+          pivot:  { pp: 0, r1: 0, r2: 0, r3: 0, s1: 0, s2: 0, s3: 0 }
         };
       }).reverse();
       
   const closes = candles.map(c => c.close);
   const rsi = calculateRSI(closes, 14);
+  const stoch = calculateStochastic(candles, 14);
   const ema20 = calculateEMA(closes, 20);
   const ema50 = calculateEMA(closes, 50);
   const ema200 = calculateEMA(closes, 200);
   const atrValues = calculateATR(candles, 14);
   const bollingerBands = calculateBollingerBands(closes, 14, 2);
   const macd = calculateMACD(closes, 12, 26, 9);
+  const pivotPoints = calculatePivotPoints(candles);
+  const vrvp = calculateVRVP(candles);
+
+  // console.log('vrvp', vrvp);
+ 
 
   candles.forEach((candle, index) => {
     candle.rsi = rsi[index-1] || 0; // RSI начинается с 1-й свечи, поэтому смещаем индекс
+    candle.stoch = { k: stoch.k[index] || 0, d: stoch.d[index] || 0 };
     candle.ema20 = ema20[index] || 0;
     candle.ema50 = ema50[index] || 0;
     candle.ema200 = ema200[index] || 0;
@@ -336,11 +500,19 @@ export const addIndicatorsToCandles = (candlesItems: MarketCheeseItem[]): Candle
       macdLine: macd.macdLine[index] || 0,
       signalLine: macd.signalLine[index] || 0
     };
+    candle.pivot = pivotPoints[index] || { pp: 0, r1: 0, r2: 0, r3: 0, s1: 0, s2: 0, s3: 0 };
   });
+
+  const hasPattern = detectReversalPatterns(candles);
+  console.log('hasPattern', hasPattern);
+  candles[candles.length - 1].reversalSignal = hasPattern;
+  
   return candles;
 }
 
 
+
+
 export { calculateSignal, detectReversalPatterns };
 
-export { calculateSMA, calculateRSI, calculateATR, calculateEMA, calculateEntryPrice, calculateStopLoss, calculateBollingerBands, calculateMACD, findForexLevels };
+export { calculateSMA, calculateRSI, calculateATR, calculateEMA, calculateEntryPrice, calculateStopLoss, calculateBollingerBands, calculateMACD, findForexLevels, calculatePivotPoints };

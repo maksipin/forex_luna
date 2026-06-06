@@ -4,7 +4,7 @@
 // import  twelvedata  from "twelvedata";
 import { DateTime } from 'luxon';
 import { SYMBOL_MAP } from "@/consts/consts";
-import { addIndicatorsToCandles, calculateATR, calculateBollingerBands, calculateEMA, calculateMACD, calculateRSI, findForexLevels, ForexLevel } from "@/lib/indicatorsUtils";
+import { addIndicatorsToCandles, calculateATR, calculateBollingerBands, calculateEMA, calculateMACD, calculateRSI, findForexLevels, ForexLevel, PivotPoints, ReversalSignal } from "@/lib/indicatorsUtils";
 import { searchLunaSignals } from "./searchSignals";
 
 const config = {
@@ -43,12 +43,15 @@ export interface Candle {
   close: number;
   volume: number;
   rsi: number;
+  stoch: { k: number; d: number };
   ema20: number;
   ema50: number;
   ema200: number;
   atr: number;
   bollingerBands: { upper: number; middle: number; lower: number } | null;
   macd: { macdLine: number | null; signalLine: number | null };
+  pivot: PivotPoints,
+  reversalSignal?: ReversalSignal | null;
 }
 
 export type CombinedSymbolData = {
@@ -166,8 +169,8 @@ export async function analyzeMarketCheeseSignals(
       return candles.find(c => c.fullTimeStr === timeStr);
     };    
 
-    const  lunaSignals = searchLunaSignals(candles, symbolName);
-    console.log(`Найденные сигналы для ${symbolName}:`, lunaSignals);
+    // const  lunaSignals = searchLunaSignals(candles, symbolName);
+    // console.log(`Найденные сигналы для ${symbolName}:`, lunaSignals);
 
     const dayCandel = findDayCandle(DateTime.now().setZone("Europe/Moscow").minus({ days: 3 }).startOf('day'));
     const hourlyCandel = findHourlyCandle(startDt);

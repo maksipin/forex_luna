@@ -84,9 +84,21 @@ export const TradeBubbleChartModal: React.FC<TradeBubbleChartModalProps> = ({ is
           <ResponsiveContainer width="100%" height="100%">
             <ScatterChart margin={{ top: 20, right: 30, bottom: 20, left: 10 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.3} />
-              
-              {/* Ось X: Часы от 0 до 23 */}
+
+                {/* Ось X: Время закрытия/жизни сделки от 1 до 300 часов */}
               <XAxis
+                type="number"
+                dataKey="hoursHeld"
+                name="Время удержания"
+                domain={[-10, 24]}
+                tickCount={100}
+                stroke="#94a3b8"
+                fontSize={12}
+                tickFormatter={(tick) => `${tick}ч`}
+              />
+              
+              {/* Ось Y: Часы от 0 до 23 */}
+              <YAxis
                 type="number"
                 dataKey="hourOpened"
                 name="Час открытия"
@@ -97,17 +109,6 @@ export const TradeBubbleChartModal: React.FC<TradeBubbleChartModalProps> = ({ is
                 tickFormatter={(tick) => `${tick}h`}
               />
               
-              {/* Ось Y: Время закрытия/жизни сделки от 1 до 300 часов */}
-              <YAxis
-                type="number"
-                dataKey="hoursHeld"
-                name="Время удержания"
-                domain={[-10, 24]}
-                tickCount={10}
-                stroke="#94a3b8"
-                fontSize={12}
-                tickFormatter={(tick) => `${tick}ч`}
-              />
               
               {/* Ось Z: Отвечает за радиус пузырька (volume) */}
               <ZAxis 
@@ -141,14 +142,14 @@ export const TradeBubbleChartModal: React.FC<TradeBubbleChartModalProps> = ({ is
         </div>
 
         {/* Футер модалки */}
-        <div className="flex justify-end mt-4">
+        {/* <div className="flex justify-end mt-4">
           <button
             onClick={onClose}
             className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-sm transition-colors"
           >
             Закрыть
           </button>
-        </div>
+        </div> */}
       </div>
     </div>
   );

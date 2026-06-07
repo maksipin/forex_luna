@@ -12,13 +12,13 @@
     "grammy": "^1.42.0",
     "lucide-react": "^1.8.0",
     "luxon": "^3.7.2",
-    "next": "16.2.4",
+    "next": "^16.2.7",
     "next-themes": "^0.4.6",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "recharts": "^3.8.1",
     "taapi": "^1.4.8",
-    "technicalindicators": "^3.1.0",
-    "twelvedata": "^3.0.1"
+    "technicalindicators": "^3.1.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -31,5 +31,8 @@
     "eslint-config-next": "16.2.4",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "overrides": {
+    "postcss": "^8.5.10"
   }
 }

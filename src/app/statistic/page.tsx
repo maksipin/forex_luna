@@ -12,6 +12,7 @@ import {
   Calendar as CalendarIcon,
   TrendingUp,
   BarChart,
+  ChartBar,
   Layers,
   AlertTriangle
 } from 'lucide-react';
@@ -21,6 +22,7 @@ import Graph from '@/components/Graph';
 import { LevelsModal } from '@/components/LevelsModal';
 import { ForexLevel } from '@/lib/indicatorsUtils';
 import { macd } from 'technicalindicators';
+import { BubbleTradeData, TradeBubbleChartModal } from '@/components/TradeBubbleChartModal';
 
 
 // Типизация для сигналов
@@ -66,6 +68,7 @@ export default function StatisticsPage() {
   const [endDate, setEndDate] = useState('');
   const [isMounted, setIsMounted] = useState(false);
   const [isChartOpen, setIsChartOpen] = useState<string | false>(false);
+  const [isBubbleChartOpen, setIsBubbleChartOpen] = useState<boolean>(false);
 
   // Внутри компонента StatisticsPage:
   const [isLevelsModalOpen, setIsLevelsModalOpen] = useState(false);
@@ -85,7 +88,7 @@ export default function StatisticsPage() {
   const handleAnalyze = async () => {
     setIsLoading(true);
 
-    const { signals, levels } = await analyzeMarketCheeseSignals(selectedPair, startDate, endDate, takeProfit) as unknown as { signals: TradeSignal[], levels: ForexLevel[] };
+    const { signals, levels } = await analyzeMarketCheeseSignals(selectedPair, startDate, endDate, takeProfit, spread) as unknown as { signals: TradeSignal[], levels: ForexLevel[] };
      
 
     // const result = await analyzeMajorForexSignals(selectedPair, startDate, endDate, takeProfit) as unknown as TradeSignal[];
@@ -136,7 +139,37 @@ export default function StatisticsPage() {
 
 
   return obstacle || null;
-};
+  };
+
+  const bubbleChartData: BubbleTradeData[] = data.reduce((acc, signal) => {
+    const hourOpened = new Date(signal.entryTime).getHours();
+    const hoursHeld = signal.candlesPassed || -20;
+
+    // 1. Ищем, есть ли уже ТОЧКА с таким же часом открытия И временем удержания
+    const existingPoint = acc.find(
+      (d) => d.hourOpened === hourOpened && d.hoursHeld === hoursHeld
+    );
+
+    if (existingPoint) {
+      // 2. Если нашли — просто увеличиваем объем (счетчик совпадений)
+      existingPoint.volume += 1;
+    } else {
+      // 3. Если не нашли — добавляем новую уникальную точку на график
+      acc.push({
+        date: new Date(signal.entryTime).toISOString().split('T')[0],
+        hourOpened,
+        hoursHeld,
+        volume: 1,
+        // Логика определения профита (опционально: подправь под свои данные)
+        result: signal.candlesPassed ? 'profit' : 'loss', 
+        pair: signal.symbol || '',
+      });
+    }
+
+    return acc;
+  }, [] as BubbleTradeData[]);
+
+ console.log('Данные для пузырькового графика:', bubbleChartData);
 
     const filteredData = data
 
@@ -158,7 +191,7 @@ export default function StatisticsPage() {
             <p className="text-right text-slate-500 text-sm font-medium">Анализ статистики</p>
           </div>
         <div className="text-sm text-gray-500">
-          Найдено сигналов: <span className="text-blue-400">{filteredData?.length}</span>
+          Найдено сигналов: <span className="text-blue-400">{filteredData?.length}</span> Закрытых: <span className="text-green-400">{filteredData.filter(s => s.resultTime).length}</span> Открытых: <span className="text-red-400">{filteredData.filter(s => !s.resultTime).length}</span>
         </div>
       </div>
 
@@ -221,22 +254,34 @@ export default function StatisticsPage() {
 
         <div className="flex justify-center items-end gap-3">
           <button 
+            title="Показать график"
             onClick={() => setIsChartOpen(selectedPair)}
             className="flex gap-2 text-slate-500 p-2.5 rounded-lg bg-slate-100 dark:bg-slate-950 shadow-sm border border-slate-200 dark:border-slate-800 hover:border-blue-500 transition-all"
           >
-            <BarChart size={20} className="text-slate-600 dark:text-slate-400" /> <p>График</p>
+            <BarChart size={20} className="text-slate-600 dark:text-slate-400" /> 
+            {/* <p>График</p> */}
           </button>
           <button 
+            title="Показать ключевые уровни на графике"
             disabled={keyLevels.length === 0}
             onClick={() => {
               setIsLevelsModalOpen(true);
             }}
-            className="flex gap-2 text-slate-500 p-2.5 rounded-lg bg-slate-100 dark:bg-slate-950 shadow-sm border border-slate-200 dark:border-slate-800 hover:border-emerald-500 transition-all"
+            className=" flex gap-2 text-slate-500 p-2.5 rounded-lg bg-slate-100 dark:bg-slate-950 shadow-sm border border-slate-200 dark:border-slate-800 hover:border-emerald-500 transition-all"
           >
             <Layers size={20} className="text-slate-600 dark:text-slate-400" />
-            <p className="hidden xl:block">Уровни</p>
-        </button>
-
+            {/* <p className="hidden xl:block">Уровни</p> */}
+            </button>
+            <button 
+            title="Показать пузырьковый график"
+            onClick={() => {
+              setIsBubbleChartOpen(true);
+            }}
+            className=" flex gap-2 text-slate-500 p-2.5 rounded-lg bg-slate-100 dark:bg-slate-950 shadow-sm border border-slate-200 dark:border-slate-800 hover:border-emerald-500 transition-all"
+          >
+            <ChartBar size={20} className="text-slate-600 dark:text-slate-400" />
+            {/* <p className="hidden xl:block">Уровни</p> */}
+          </button>
         </div>
 
         {isChartOpen && <Graph symbol={selectedPair.replace('/', '')} levels={keyLevels} price={0} onClose={() => setIsChartOpen(false)}/>}
@@ -378,7 +423,7 @@ export default function StatisticsPage() {
                     </td>
                     <td className="px-6 py-4">
                       {row.candlesPassed ? (
-                        <span className="bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-1 rounded text-xs font-medium">
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${row.candlesPassed < 72 ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" : "bg-red-500/10 text-red-400 border border-red-500/20"}`}>
                           {row.candlesPassed}h
                         </span>
                       ) : <span className="text-gray-700">—</span>}
@@ -462,6 +507,12 @@ export default function StatisticsPage() {
         onClose={() => setIsLevelsModalOpen(false)}
         keyLevels={keyLevels}
         selectedPair={selectedPair}
+      />
+      {/* Подключаем модальное окно */}
+      <TradeBubbleChartModal
+        isOpen={isBubbleChartOpen}
+        onClose={() => setIsBubbleChartOpen(false)}
+        data={bubbleChartData}
       />
     </div>
   );

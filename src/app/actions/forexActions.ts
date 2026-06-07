@@ -116,6 +116,7 @@ export async function analyzeMarketCheeseSignals(
   startDate: string, 
   endDate: string,   
   takeProfitPoints: number = 1,
+  spreadPoints: number = 30,
   rsiPeriod: number = 14 // Добавили период RSI
 ) {
   const symbolId = SYMBOL_MAP[symbolName] || 68;
@@ -197,7 +198,8 @@ export async function analyzeMarketCheeseSignals(
         const c1 = dayCandles[i - 1];
         const c2 = dayCandles[i];
 
-        if (c2.dt.hour < 8 || c2.dt.hour > 20) continue;
+        // Ограничиваем сигналы только дневными часами (например, с 8:00 до 20:00)
+        if (c2.dt.hour < 2 || c2.dt.hour > 23) continue;
 
         const isDayBullish = c2.close > dayOpen;
         const isDayBearish = c2.close < dayOpen;
@@ -211,7 +213,7 @@ export async function analyzeMarketCheeseSignals(
 
         if (signalType) {
           const entryPrice = c2.close;
-          const TARGET_DIFF = c2?.atr &&  (takeProfitPoints * c2.atr + 30 * POINT) || 0 ; // Цель — 1 ATR + небольшой запас
+          const TARGET_DIFF = c2?.atr &&  (takeProfitPoints * c2.atr + spreadPoints * POINT) || 0 ; // Цель — 1 ATR + небольшой запас
           const targetPrice = signalType === 'BUY' ? entryPrice + TARGET_DIFF : entryPrice - TARGET_DIFF;
           
           

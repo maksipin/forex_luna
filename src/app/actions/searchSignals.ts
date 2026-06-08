@@ -24,7 +24,7 @@ export const searchLunaSignals =  (candles: Candle[], symbol: string) => {
 
     const hourlyCandles = candlesPerDay.slice(candlesPerDay.length - 2);
 
-    console.log(`Анализируем сигналы для ${symbol} на основе дневной свечи и последних 2 часовых свечей:`, {candles, candlesPerDay, hourlyCandles});
+    // console.log(`Анализируем сигналы для ${symbol} на основе дневной свечи и последних 2 часовых свечей:`, {candles, candlesPerDay, hourlyCandles});
 
     const signal = checkLunaPattern(hourlyCandles, dailyCandle);
    

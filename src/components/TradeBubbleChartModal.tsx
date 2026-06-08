@@ -32,9 +32,13 @@ interface TradeBubbleChartModalProps {
 export const TradeBubbleChartModal: React.FC<TradeBubbleChartModalProps> = ({ isOpen, onClose, data }) => {
   if (!isOpen) return null;
 
+  const [filterData, setFilterData] = React.useState<boolean>(true);
+
+  const filteredData = filterData ? data.filter(d => d.hoursHeld < 360) : data;
+
   // Разделяем данные, чтобы построить два разных слоя (Scatter) с разными цветами
-  const profitData = data.filter((d) => d.result === 'profit');
-  const lossData = data.filter((d) => d.result === 'loss');
+  const profitData = filteredData.filter((d) => d.result === 'profit');
+  const lossData = filteredData.filter((d) => d.result === 'loss');
 
   // Кастомный тултип для красивого отображения данных при наведении
   const CustomTooltip = ({ active, payload }: any) => {
@@ -71,6 +75,22 @@ export const TradeBubbleChartModal: React.FC<TradeBubbleChartModalProps> = ({ is
               Размер пузырька зависит от объема сделки. Ось X — час входа, Ось Y — время удержания в часах.
             </p>
           </div>
+          <label className="inline-flex items-center cursor-pointer select-none">
+            <span className="mr-3 text-sm font-medium text-slate-300">
+              Краткосрок (&lt; 360 ч.)
+            </span>
+            <div className="relative">
+              <input
+                type="checkbox"
+                checked={filterData}
+                onChange={(e) => setFilterData(e.target.checked)}
+                className="sr-only peer"
+              />
+              {/* Задний фон тумблера */}
+              <div 
+              className="w-11 h-6 bg-slate-700 rounded-full peer peer-focus:ring-2 peer-focus:ring-indigo-500/50 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+            </div>
+          </label>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-white transition-colors text-2xl font-light p-1"
@@ -84,21 +104,9 @@ export const TradeBubbleChartModal: React.FC<TradeBubbleChartModalProps> = ({ is
           <ResponsiveContainer width="100%" height="100%">
             <ScatterChart margin={{ top: 20, right: 30, bottom: 20, left: 10 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.3} />
-
-                {/* Ось X: Время закрытия/жизни сделки от 1 до 300 часов */}
-              <XAxis
-                type="number"
-                dataKey="hoursHeld"
-                name="Время удержания"
-                domain={[-10, 24]}
-                tickCount={100}
-                stroke="#94a3b8"
-                fontSize={12}
-                tickFormatter={(tick) => `${tick}ч`}
-              />
               
-              {/* Ось Y: Часы от 0 до 23 */}
-              <YAxis
+              {/* Ось X: Часы от 0 до 23 */}
+              <XAxis
                 type="number"
                 dataKey="hourOpened"
                 name="Час открытия"
@@ -109,6 +117,17 @@ export const TradeBubbleChartModal: React.FC<TradeBubbleChartModalProps> = ({ is
                 tickFormatter={(tick) => `${tick}h`}
               />
               
+              {/* Ось Y: Время закрытия/жизни сделки от 1 до 300 часов */}
+              <YAxis
+                type="number"
+                dataKey="hoursHeld"
+                name="Время удержания"
+                domain={[-10, 120]}
+                tickCount={100}
+                stroke="#94a3b8"
+                fontSize={12}
+                tickFormatter={(tick) => `${tick}ч`}
+              />
               
               {/* Ось Z: Отвечает за радиус пузырька (volume) */}
               <ZAxis 
@@ -142,14 +161,14 @@ export const TradeBubbleChartModal: React.FC<TradeBubbleChartModalProps> = ({ is
         </div>
 
         {/* Футер модалки */}
-        {/* <div className="flex justify-end mt-4">
-          <button
+        <div className="flex justify-end mt-4">
+          {/* <button
             onClick={onClose}
             className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-sm transition-colors"
           >
             Закрыть
-          </button>
-        </div> */}
+          </button> */}
+        </div>
       </div>
     </div>
   );

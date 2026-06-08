@@ -141,11 +141,15 @@ export default function StatisticsPage() {
   return obstacle || null;
   };
 
+  console.log("Данные",data)
+
   const bubbleChartData: BubbleTradeData[] = data.reduce((acc, signal) => {
     const hourOpened = new Date(signal.entryTime).getHours();
-    const hoursHeld = signal.candlesPassed || -20;
+    const freshEntryDays = new Date(signal.entryTime).getDay() < 2; // Сигналы, открытые в первые 3 дня недели, считаем "свежими" и не учитываем их в статистике удержания
+    if (!signal.candlesPassed && freshEntryDays) return acc; // Пропускаем открытые сделки, у которых нет данных о свечах до закрытия
+    const hoursHeld = signal.candlesPassed || -5;
 
-    // 1. Ищем, есть ли уже ТОЧКА с таким же часом открытия И временем удержания
+    // 1. Ищем, есть ли уже ТОЧКА с таким же часом .открытия И временем удержания
     const existingPoint = acc.find(
       (d) => d.hourOpened === hourOpened && d.hoursHeld === hoursHeld
     );
@@ -169,7 +173,7 @@ export default function StatisticsPage() {
     return acc;
   }, [] as BubbleTradeData[]);
 
- console.log('Данные для пузырькового графика:', bubbleChartData);
+//  console.log('Данные для пузырькового графика:', bubbleChartData);
 
     const filteredData = data
 
